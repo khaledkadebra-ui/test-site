@@ -1,0 +1,49 @@
+# ── Web Framework ────────────────────────────────────────────────────────────
+fastapi==0.115.6
+uvicorn[standard]==0.32.1
+python-multipart==0.0.17       # file uploads
+
+# ── Config ───────────────────────────────────────────────────────────────────
+pydantic==2.10.3
+pydantic-settings==2.7.0
+python-dotenv==1.0.1
+
+# ── Database ─────────────────────────────────────────────────────────────────
+sqlalchemy[asyncio]==2.0.36
+asyncpg==0.30.0                # async PostgreSQL driver
+alembic==1.14.0                # migrations
+
+# ── Auth ─────────────────────────────────────────────────────────────────────
+passlib[bcrypt]==1.7.4
+python-jose[cryptography]==3.3.0
+
+# ── Task Queue ───────────────────────────────────────────────────────────────
+celery==5.4.0
+redis==5.2.1
+
+# ── OpenAI ───────────────────────────────────────────────────────────────────
+openai==1.59.6
+
+# ── Document Processing ──────────────────────────────────────────────────────
+pypdf2==3.0.1
+openpyxl==3.1.5
+
+# ── PDF Generation ───────────────────────────────────────────────────────────
+weasyprint==63.0
+jinja2==3.1.5
+
+# ── File Storage ─────────────────────────────────────────────────────────────
+boto3==1.35.88                 # AWS S3
+
+# ── Rate Limiting ─────────────────────────────────────────────────────────────
+slowapi==0.1.9
+
+# ── Monitoring ────────────────────────────────────────────────────────────────
+sentry-sdk[fastapi]==2.19.2
+
+# ── Testing ───────────────────────────────────────────────────────────────────
+pytest==8.3.4
+pytest-asyncio==0.24.0
+httpx==0.28.1                  # async test client for FastAPI
+aiosqlite==0.20.0              # in-memory SQLite for integration tests (no Docker needed)
+pytest-cov==6.0.0              # coverage reports

@@ -1,0 +1,142 @@
+{
+  "metadata": {
+    "sources": ["DEFRA 2023", "ICAO Carbon Calculator 2023", "EPA EEIO 2.0 (2023)"],
+    "last_updated": "2023",
+    "note": "Scope 3 is inherently estimated. Spend-based Cat 1 factors carry ~50% uncertainty. Clearly disclose method in report."
+  },
+  "business_travel": {
+    "_category": "GHG Protocol Scope 3 Category 6",
+    "short_haul_flight": {
+      "kg_co2e_per_pkm": 0.255,
+      "definition": "Flights under 3,700 km, economy class. Includes radiative forcing index (RFI) uplift of 1.9x.",
+      "source": "DEFRA 2023 — Flights, short-haul, international, economy"
+    },
+    "short_haul_flight_business": {
+      "kg_co2e_per_pkm": 0.343,
+      "definition": "Short-haul, business class. Higher seat width factor applied.",
+      "source": "DEFRA 2023"
+    },
+    "long_haul_flight": {
+      "kg_co2e_per_pkm": 0.195,
+      "definition": "Flights over 3,700 km, economy class. Includes RFI uplift.",
+      "source": "DEFRA 2023 — Flights, long-haul, international, economy"
+    },
+    "long_haul_flight_business": {
+      "kg_co2e_per_pkm": 0.429,
+      "definition": "Long-haul, business class. 2.2x premium cabin uplift factor.",
+      "source": "DEFRA 2023"
+    },
+    "long_haul_flight_first": {
+      "kg_co2e_per_pkm": 0.599,
+      "definition": "Long-haul, first class. 4x premium cabin uplift factor.",
+      "source": "DEFRA 2023"
+    },
+    "rail": {
+      "kg_co2e_per_pkm": 0.035,
+      "definition": "National rail average, passenger-km. Includes all electricity + diesel mix.",
+      "source": "DEFRA 2023 — National rail, average"
+    },
+    "international_rail": {
+      "kg_co2e_per_pkm": 0.006,
+      "definition": "International rail (Eurostar / high-speed rail), typically electric.",
+      "source": "DEFRA 2023 — International rail"
+    },
+    "rental_car": {
+      "kg_co2e_per_km": 0.171,
+      "definition": "Average rental car, petrol/diesel market mix.",
+      "source": "DEFRA 2023 — Average car"
+    },
+    "taxi": {
+      "kg_co2e_per_km": 0.149,
+      "definition": "Taxi, average occupancy.",
+      "source": "DEFRA 2023"
+    }
+  },
+  "employee_commuting": {
+    "_category": "GHG Protocol Scope 3 Category 7",
+    "_note": "Commuting emissions are estimated. Actual mode split survey is preferred if available.",
+    "avg_mixed_mode": {
+      "kg_co2e_per_km": 0.145,
+      "definition": "Mixed-mode estimate: 60% car, 25% public transit, 15% active (cycling/walking). Per one-way km per person.",
+      "source": "DEFRA 2023 composite estimate"
+    },
+    "car_only": {
+      "kg_co2e_per_km": 0.171,
+      "source": "DEFRA 2023 — Average car"
+    },
+    "public_transit": {
+      "kg_co2e_per_km": 0.089,
+      "definition": "Local bus + metro + rail weighted average.",
+      "source": "DEFRA 2023 — Local transport composite"
+    },
+    "cycling_walking": {
+      "kg_co2e_per_km": 0.0,
+      "definition": "Zero direct emissions.",
+      "source": "GHG Protocol"
+    }
+  },
+  "purchased_goods": {
+    "_category": "GHG Protocol Scope 3 Category 1",
+    "_method": "Spend-based EEIO (Environmentally Extended Input-Output). Primary method for SMEs without supplier data.",
+    "_uncertainty": "±50%. Disclose as estimated spend-based in report.",
+    "spend_based": {
+      "_source_note": "EPA EEIO 2.0 (2023), USD factors converted at 1.08 USD/EUR average 2023",
+      "general": {
+        "kg_co2e_per_eur": 0.42,
+        "source": "EPA EEIO 2.0 — Economy-wide average"
+      },
+      "manufacturing": {
+        "kg_co2e_per_eur": 0.61,
+        "source": "EPA EEIO 2.0 — Manufacturing sector"
+      },
+      "construction": {
+        "kg_co2e_per_eur": 0.58,
+        "source": "EPA EEIO 2.0 — Construction"
+      },
+      "retail": {
+        "kg_co2e_per_eur": 0.35,
+        "source": "EPA EEIO 2.0 — Retail trade"
+      },
+      "logistics": {
+        "kg_co2e_per_eur": 0.52,
+        "source": "EPA EEIO 2.0 — Transportation & warehousing"
+      },
+      "finance": {
+        "kg_co2e_per_eur": 0.18,
+        "source": "EPA EEIO 2.0 — Finance & insurance"
+      },
+      "technology": {
+        "kg_co2e_per_eur": 0.22,
+        "source": "EPA EEIO 2.0 — Information technology"
+      },
+      "healthcare": {
+        "kg_co2e_per_eur": 0.31,
+        "source": "EPA EEIO 2.0 — Healthcare & social assistance"
+      },
+      "food_beverage": {
+        "kg_co2e_per_eur": 0.89,
+        "source": "EPA EEIO 2.0 — Food manufacturing"
+      },
+      "agriculture": {
+        "kg_co2e_per_eur": 1.24,
+        "source": "EPA EEIO 2.0 — Agriculture, forestry, fishing"
+      },
+      "energy": {
+        "kg_co2e_per_eur": 0.95,
+        "source": "EPA EEIO 2.0 — Mining, oil & gas, utilities"
+      },
+      "professional_services": {
+        "kg_co2e_per_eur": 0.19,
+        "source": "EPA EEIO 2.0 — Professional & business services"
+      },
+      "hospitality": {
+        "kg_co2e_per_eur": 0.38,
+        "source": "EPA EEIO 2.0 — Accommodation & food services"
+      },
+      "education": {
+        "kg_co2e_per_eur": 0.21,
+        "source": "EPA EEIO 2.0 — Educational services"
+      }
+    }
+  }
+}

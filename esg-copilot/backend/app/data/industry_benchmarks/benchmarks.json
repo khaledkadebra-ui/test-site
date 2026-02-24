@@ -1,0 +1,94 @@
+{
+  "_note": "Industry benchmarks for ESG scoring and CO2 intensity comparison. Sources: CDP SME Data 2023, EcoVadis SME Index 2023, EU Commission SME ESG Survey 2022.",
+  "_co2_intensity_unit": "tonnes CO2e per €1M revenue",
+  "general": {
+    "avg_score": 42,
+    "std_dev": 15,
+    "avg_co2_intensity_t_per_meur": 85,
+    "description": "Cross-industry SME average"
+  },
+  "manufacturing": {
+    "avg_score": 38,
+    "std_dev": 14,
+    "avg_co2_intensity_t_per_meur": 210,
+    "description": "General manufacturing, light industry"
+  },
+  "heavy_manufacturing": {
+    "avg_score": 34,
+    "std_dev": 13,
+    "avg_co2_intensity_t_per_meur": 480,
+    "description": "Steel, cement, chemicals, process industries"
+  },
+  "construction": {
+    "avg_score": 36,
+    "std_dev": 14,
+    "avg_co2_intensity_t_per_meur": 175,
+    "description": "Building & civil construction"
+  },
+  "retail": {
+    "avg_score": 44,
+    "std_dev": 16,
+    "avg_co2_intensity_t_per_meur": 45,
+    "description": "General retail, wholesale trade"
+  },
+  "logistics": {
+    "avg_score": 39,
+    "std_dev": 14,
+    "avg_co2_intensity_t_per_meur": 320,
+    "description": "Road freight, warehousing, courier"
+  },
+  "finance": {
+    "avg_score": 55,
+    "std_dev": 18,
+    "avg_co2_intensity_t_per_meur": 12,
+    "description": "Financial services, insurance, fintech"
+  },
+  "technology": {
+    "avg_score": 52,
+    "std_dev": 17,
+    "avg_co2_intensity_t_per_meur": 18,
+    "description": "Software, SaaS, IT services"
+  },
+  "healthcare": {
+    "avg_score": 48,
+    "std_dev": 15,
+    "avg_co2_intensity_t_per_meur": 55,
+    "description": "Healthcare providers, medical devices, pharma"
+  },
+  "food_beverage": {
+    "avg_score": 40,
+    "std_dev": 14,
+    "avg_co2_intensity_t_per_meur": 380,
+    "description": "Food production, beverage manufacturing"
+  },
+  "agriculture": {
+    "avg_score": 33,
+    "std_dev": 13,
+    "avg_co2_intensity_t_per_meur": 620,
+    "description": "Farming, horticulture, aquaculture"
+  },
+  "professional_services": {
+    "avg_score": 50,
+    "std_dev": 17,
+    "avg_co2_intensity_t_per_meur": 22,
+    "description": "Consulting, legal, accounting, marketing"
+  },
+  "hospitality": {
+    "avg_score": 41,
+    "std_dev": 15,
+    "avg_co2_intensity_t_per_meur": 95,
+    "description": "Hotels, restaurants, catering, tourism"
+  },
+  "energy": {
+    "avg_score": 37,
+    "std_dev": 15,
+    "avg_co2_intensity_t_per_meur": 550,
+    "description": "Energy production, oil & gas, utilities"
+  },
+  "education": {
+    "avg_score": 53,
+    "std_dev": 16,
+    "avg_co2_intensity_t_per_meur": 28,
+    "description": "Schools, universities, training providers"
+  }
+}
