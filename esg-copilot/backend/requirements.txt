@@ -15,7 +15,7 @@ asyncpg==0.30.0                # async PostgreSQL driver
 alembic==1.14.0                # migrations
 
 # ── Auth ─────────────────────────────────────────────────────────────────────
-passlib[bcrypt]==1.7.4
+bcrypt==4.1.2
 python-jose[cryptography]==3.3.0
 
 # ── Task Queue ───────────────────────────────────────────────────────────────
