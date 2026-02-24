@@ -29,7 +29,7 @@ pypdf2==3.0.1
 openpyxl==3.1.5
 
 # ── PDF Generation ───────────────────────────────────────────────────────────
-weasyprint==63.0
+# weasyprint==63.0  # requires system libs (libpango/cairo) — install separately on Docker
 jinja2==3.1.5
 
 # ── File Storage ─────────────────────────────────────────────────────────────
