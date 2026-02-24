@@ -1,11 +1,11 @@
 "use client"
-import { useState, useEffect } from "react"
+import { useState, useEffect, Suspense } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { saveEnergy, saveTravel, saveProcurement, savePolicies, getCompleteness, submitSubmission, calculatePreview, generateReport } from "@/lib/api"
 
 const STEPS = ["Energy", "Travel", "Procurement", "Policies", "Review"]
 
-export default function SubmitPage() {
+function SubmitPageInner() {
   const router = useRouter()
   const params = useSearchParams()
   const submissionId = params.get("id") || ""
@@ -259,6 +259,14 @@ function Check({ label, checked, onChange }: { label: string; checked: boolean; 
       </div>
       <span className="text-sm text-slate-300" dangerouslySetInnerHTML={{ __html: label }} />
     </label>
+  )
+}
+
+export default function SubmitPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center text-slate-400">Loading…</div>}>
+      <SubmitPageInner />
+    </Suspense>
   )
 }
 
