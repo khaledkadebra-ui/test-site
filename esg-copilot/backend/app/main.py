@@ -9,13 +9,21 @@ import logging
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.responses import JSONResponse
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
+from slowapi.middleware import SlowAPIMiddleware
 
 from app.core.config import settings
 import app.models  # noqa: F401 — ensures all ORM models are registered
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+# ── Rate limiter ───────────────────────────────────────────────────────────────
+limiter = Limiter(key_func=get_remote_address, default_limits=["200/minute"])
 
 app = FastAPI(
     title="ESG Copilot API",
@@ -24,6 +32,11 @@ app = FastAPI(
     docs_url="/docs" if settings.ENVIRONMENT != "production" else None,
     redoc_url="/redoc" if settings.ENVIRONMENT != "production" else None,
 )
+
+# ── Rate limiting ─────────────────────────────────────────────────────────────
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+app.add_middleware(SlowAPIMiddleware)
 
 # ── CORS ──────────────────────────────────────────────────────────────────────
 app.add_middleware(

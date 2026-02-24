@@ -340,7 +340,56 @@ async def _run_report_pipeline(report_id: str, submission_id: str):
             esg_narrative = await writer.write_esg_narrative(company.name, score)
             roadmap_narrative = await writer.write_roadmap_narrative(company.name, score, gaps)
 
-            # ── 5. Save results ──────────────────────────────────────────────
+            identified_gaps = score.environmental.gaps + score.social.gaps + score.governance.gaps
+            recommendations = gaps.to_dict()["actions"]
+
+            # ── 5. PDF Generation ────────────────────────────────────────────
+            pdf_url = None
+            try:
+                from app.services.pdf.pdf_builder import build_pdf
+                from app.services.storage.file_storage import get_storage
+
+                pdf_bytes = build_pdf(
+                    company_name=company.name,
+                    reporting_year=sub.reporting_year,
+                    industry_code=company.industry_code,
+                    country_code=company.country_code,
+                    engine_version=settings.CALCULATION_ENGINE_VERSION,
+                    scope1_co2e_tonnes=co2.scope1_tonnes,
+                    scope2_co2e_tonnes=co2.scope2_tonnes,
+                    scope3_co2e_tonnes=co2.scope3_tonnes,
+                    total_co2e_tonnes=co2.total_tonnes,
+                    scope1_breakdown=co2.scope1_breakdown,
+                    scope2_breakdown=co2.scope2_breakdown,
+                    scope3_breakdown=co2.scope3_breakdown,
+                    esg_score_total=score.total,
+                    esg_score_e=score.environmental.score,
+                    esg_score_s=score.social.score,
+                    esg_score_g=score.governance.score,
+                    esg_rating=score.rating,
+                    industry_percentile=score.industry_percentile,
+                    identified_gaps=identified_gaps,
+                    recommendations=recommendations,
+                    executive_summary=exec_summary,
+                    co2_narrative=co2_narrative,
+                    esg_narrative=esg_narrative,
+                    roadmap_narrative=roadmap_narrative,
+                    disclaimer=report.disclaimer,
+                )
+                storage = get_storage()
+                pdf_url = await storage.upload(
+                    file_bytes=pdf_bytes,
+                    company_id=str(sub.company_id),
+                    filename=f"esg-report-{sub.reporting_year}-v{report.version}.pdf",
+                    content_type="application/pdf",
+                )
+                logger.info("PDF uploaded: %s", pdf_url)
+            except ImportError:
+                logger.warning("WeasyPrint not installed — skipping PDF generation")
+            except Exception as pdf_exc:
+                logger.warning("PDF generation failed (non-fatal): %s", pdf_exc)
+
+            # ── 6. Save results ──────────────────────────────────────────────
             rr = ReportResults(
                 report_id=report.id,
                 scope1_co2e_kg=co2.scope1_total_kg,
@@ -359,8 +408,8 @@ async def _run_report_pipeline(report_id: str, submission_id: str):
                 e_breakdown=score.environmental.breakdown,
                 s_breakdown=score.social.breakdown,
                 g_breakdown=score.governance.breakdown,
-                identified_gaps=score.environmental.gaps + score.social.gaps + score.governance.gaps,
-                recommendations=gaps.to_dict()["actions"],
+                identified_gaps=identified_gaps,
+                recommendations=recommendations,
                 executive_summary=exec_summary,
                 co2_narrative=co2_narrative,
                 esg_narrative=esg_narrative,
@@ -372,6 +421,7 @@ async def _run_report_pipeline(report_id: str, submission_id: str):
 
             report.status = "completed"
             report.completed_at = datetime.now(timezone.utc)
+            report.pdf_url = pdf_url
             await db.commit()
             logger.info("Report completed: report_id=%s", report_id)
 

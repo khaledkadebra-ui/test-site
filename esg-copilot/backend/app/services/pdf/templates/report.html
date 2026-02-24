@@ -1,0 +1,507 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<style>
+  @page {
+    size: A4;
+    margin: 20mm 15mm 25mm 15mm;
+    @bottom-center {
+      content: "ESG Copilot Report  |  Page " counter(page) " of " counter(pages);
+      font-size: 8pt;
+      color: #6b7280;
+      font-family: 'Helvetica Neue', sans-serif;
+    }
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    font-size: 9.5pt;
+    color: #1f2937;
+    line-height: 1.5;
+  }
+
+  /* ── Cover page ── */
+  .cover {
+    page: cover;
+    height: 260mm;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: 20mm 10mm;
+    background: #0f172a;
+    color: white;
+  }
+  @page cover { margin: 0; }
+
+  .cover-badge {
+    font-size: 8pt;
+    font-weight: 700;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: #22c55e;
+    margin-bottom: 12mm;
+  }
+  .cover h1 {
+    font-size: 32pt;
+    font-weight: 800;
+    line-height: 1.1;
+    margin-bottom: 6mm;
+  }
+  .cover h1 span { color: #22c55e; }
+  .cover-sub {
+    font-size: 12pt;
+    color: #94a3b8;
+    margin-bottom: 14mm;
+  }
+  .cover-meta {
+    border-top: 1px solid #334155;
+    padding-top: 8mm;
+    display: flex;
+    gap: 20mm;
+  }
+  .cover-meta-item label {
+    display: block;
+    font-size: 7pt;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    color: #64748b;
+    margin-bottom: 1mm;
+  }
+  .cover-meta-item span {
+    font-size: 10pt;
+    font-weight: 600;
+    color: #e2e8f0;
+  }
+
+  /* ── Rating badge on cover ── */
+  .rating-pill {
+    display: inline-block;
+    background: #22c55e;
+    color: #0f172a;
+    font-size: 48pt;
+    font-weight: 900;
+    width: 30mm;
+    height: 30mm;
+    line-height: 30mm;
+    text-align: center;
+    border-radius: 50%;
+    margin-bottom: 8mm;
+  }
+  .rating-pill.B { background: #84cc16; }
+  .rating-pill.C { background: #eab308; color: #fff; }
+  .rating-pill.D { background: #f97316; color: #fff; }
+  .rating-pill.E { background: #ef4444; color: #fff; }
+
+  /* ── Section pages ── */
+  .section-page { page-break-before: always; padding-top: 5mm; }
+
+  h2 {
+    font-size: 14pt;
+    font-weight: 700;
+    color: #0f172a;
+    border-bottom: 2px solid #22c55e;
+    padding-bottom: 2mm;
+    margin-bottom: 5mm;
+    margin-top: 6mm;
+  }
+  h3 {
+    font-size: 10.5pt;
+    font-weight: 700;
+    color: #1e293b;
+    margin-top: 4mm;
+    margin-bottom: 2mm;
+  }
+  p { margin-bottom: 3mm; }
+
+  /* ── KPI bar (score bars) ── */
+  .kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 4mm;
+    margin-bottom: 6mm;
+  }
+  .kpi-card {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 3mm;
+    padding: 4mm;
+    text-align: center;
+  }
+  .kpi-value {
+    font-size: 22pt;
+    font-weight: 800;
+    color: #0f172a;
+    line-height: 1;
+    margin-bottom: 1mm;
+  }
+  .kpi-label {
+    font-size: 7.5pt;
+    color: #64748b;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+  .kpi-card.highlight { background: #0f172a; border-color: #0f172a; }
+  .kpi-card.highlight .kpi-value { color: #22c55e; }
+  .kpi-card.highlight .kpi-label { color: #94a3b8; }
+
+  /* ── Scope bars ── */
+  .scope-bar-row {
+    display: flex;
+    align-items: center;
+    margin-bottom: 3mm;
+    gap: 3mm;
+  }
+  .scope-label { width: 28mm; font-size: 8.5pt; color: #374151; font-weight: 600; }
+  .scope-bar-wrap { flex: 1; background: #e5e7eb; border-radius: 2mm; height: 5mm; overflow: hidden; }
+  .scope-bar { height: 100%; border-radius: 2mm; }
+  .scope-bar.s1 { background: #22c55e; }
+  .scope-bar.s2 { background: #3b82f6; }
+  .scope-bar.s3 { background: #a855f7; }
+  .scope-value { width: 28mm; font-size: 8pt; text-align: right; color: #374151; }
+
+  /* ── ESG score bars ── */
+  .score-section { margin-bottom: 4mm; }
+  .score-row {
+    display: flex;
+    align-items: center;
+    margin-bottom: 2mm;
+    gap: 3mm;
+  }
+  .score-label { width: 30mm; font-size: 8.5pt; color: #374151; }
+  .score-bar-wrap { flex: 1; background: #e5e7eb; border-radius: 2mm; height: 4mm; overflow: hidden; }
+  .score-bar { height: 100%; border-radius: 2mm; background: #22c55e; }
+  .score-bar.medium { background: #eab308; }
+  .score-bar.low { background: #ef4444; }
+  .score-num { width: 15mm; font-size: 8pt; text-align: right; font-weight: 700; color: #374151; }
+
+  /* ── Tables ── */
+  table { width: 100%; border-collapse: collapse; margin-bottom: 4mm; font-size: 8.5pt; }
+  thead th {
+    background: #0f172a;
+    color: #e2e8f0;
+    padding: 2mm 3mm;
+    text-align: left;
+    font-weight: 600;
+    font-size: 7.5pt;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  tbody tr:nth-child(even) { background: #f8fafc; }
+  tbody td { padding: 2mm 3mm; border-bottom: 1px solid #e5e7eb; color: #374151; }
+  tbody td.num { text-align: right; font-variant-numeric: tabular-nums; }
+  tbody td.bold { font-weight: 700; }
+
+  /* ── Gap / action cards ── */
+  .gap-list { margin-bottom: 4mm; }
+  .gap-item {
+    display: flex;
+    gap: 3mm;
+    margin-bottom: 2.5mm;
+    padding: 3mm;
+    background: #fefce8;
+    border-left: 3px solid #eab308;
+    border-radius: 0 2mm 2mm 0;
+  }
+  .gap-item.high { background: #fef2f2; border-color: #ef4444; }
+  .gap-item.low { background: #f0fdf4; border-color: #22c55e; }
+  .gap-priority {
+    font-size: 7pt;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    min-width: 18mm;
+    padding-top: 0.5mm;
+  }
+  .gap-text { font-size: 8.5pt; color: #374151; }
+  .gap-text strong { display: block; color: #1f2937; font-size: 9pt; margin-bottom: 0.5mm; }
+
+  /* ── Roadmap quarters ── */
+  .roadmap-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 3mm;
+    margin-bottom: 5mm;
+  }
+  .quarter-card {
+    border: 1px solid #e2e8f0;
+    border-radius: 2mm;
+    overflow: hidden;
+  }
+  .quarter-header {
+    background: #0f172a;
+    color: #22c55e;
+    font-size: 8pt;
+    font-weight: 700;
+    padding: 2mm 3mm;
+    text-align: center;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+  .quarter-body { padding: 3mm; }
+  .quarter-action {
+    font-size: 7.5pt;
+    color: #374151;
+    margin-bottom: 2mm;
+    padding-left: 3mm;
+    border-left: 2px solid #22c55e;
+  }
+
+  /* ── Disclaimer ── */
+  .disclaimer {
+    margin-top: 8mm;
+    padding: 3mm 4mm;
+    background: #f1f5f9;
+    border: 1px solid #cbd5e1;
+    border-radius: 2mm;
+    font-size: 7.5pt;
+    color: #64748b;
+    line-height: 1.4;
+  }
+
+  /* ── Narrative text ── */
+  .narrative {
+    background: #f8fafc;
+    border-left: 3px solid #22c55e;
+    padding: 4mm 5mm;
+    border-radius: 0 2mm 2mm 0;
+    margin-bottom: 5mm;
+    font-size: 9pt;
+    color: #374151;
+  }
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════════════════ COVER PAGE -->
+<div class="cover">
+  <div class="rating-pill {{ esg_rating }}">{{ esg_rating }}</div>
+  <div class="cover-badge">ESG Copilot &bull; AI-Powered Reporting</div>
+  <h1>ESG &amp; Carbon<br/><span>Impact Report</span></h1>
+  <div class="cover-sub">{{ company_name }}</div>
+  <div class="cover-meta">
+    <div class="cover-meta-item">
+      <label>Reporting Year</label>
+      <span>{{ reporting_year }}</span>
+    </div>
+    <div class="cover-meta-item">
+      <label>Industry</label>
+      <span>{{ industry_code | title }}</span>
+    </div>
+    <div class="cover-meta-item">
+      <label>Country</label>
+      <span>{{ country_code }}</span>
+    </div>
+    <div class="cover-meta-item">
+      <label>Report Generated</label>
+      <span>{{ generated_date }}</span>
+    </div>
+    <div class="cover-meta-item">
+      <label>Engine Version</label>
+      <span>{{ engine_version }}</span>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════ EXECUTIVE SUMMARY -->
+<div class="section-page">
+  <h2>Executive Summary</h2>
+  <div class="narrative">{{ executive_summary }}</div>
+
+  <!-- Top KPIs -->
+  <div class="kpi-grid">
+    <div class="kpi-card highlight">
+      <div class="kpi-value">{{ esg_rating }}</div>
+      <div class="kpi-label">ESG Rating</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-value">{{ esg_score_total | round(1) }}</div>
+      <div class="kpi-label">ESG Score / 100</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-value">{{ total_co2e_tonnes | round(1) }}</div>
+      <div class="kpi-label">Total tCO₂e</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-value">{{ industry_percentile | round(0) | int }}%</div>
+      <div class="kpi-label">Industry Percentile</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════ CO2 RESULTS -->
+<div class="section-page">
+  <h2>Carbon Footprint — GHG Protocol Scopes</h2>
+  <div class="narrative">{{ co2_narrative }}</div>
+
+  <!-- Scope bars -->
+  {% set total = total_co2e_tonnes %}
+  <div style="margin-bottom:6mm;">
+    {% for scope_label, scope_val, cls in [
+        ("Scope 1 — Direct", scope1_co2e_tonnes, "s1"),
+        ("Scope 2 — Energy", scope2_co2e_tonnes, "s2"),
+        ("Scope 3 — Value Chain", scope3_co2e_tonnes, "s3")
+    ] %}
+    <div class="scope-bar-row">
+      <span class="scope-label">{{ scope_label }}</span>
+      <div class="scope-bar-wrap">
+        <div class="scope-bar {{ cls }}" style="width:{{ [(scope_val / total * 100) if total > 0 else 0, 100] | min }}%;"></div>
+      </div>
+      <span class="scope-value">{{ scope_val | round(2) }} t</span>
+    </div>
+    {% endfor %}
+  </div>
+
+  <!-- Scope 1 breakdown -->
+  <h3>Scope 1 Breakdown</h3>
+  <table>
+    <thead><tr><th>Source</th><th>Quantity</th><th>Unit</th><th>tCO₂e</th><th>Source Citation</th></tr></thead>
+    <tbody>
+    {% for key, item in scope1_breakdown.items() %}
+    {% if item.co2e_kg is defined and item.co2e_kg > 0 %}
+    <tr>
+      <td>{{ key | replace("_", " ") | title }}</td>
+      <td class="num">{{ item.quantity | round(1) }}</td>
+      <td>{{ item.unit }}</td>
+      <td class="num bold">{{ (item.co2e_kg / 1000) | round(3) }}</td>
+      <td style="font-size:7pt;color:#6b7280;">{{ item.source }}</td>
+    </tr>
+    {% endif %}
+    {% endfor %}
+    <tr style="background:#0f172a;color:#e2e8f0;">
+      <td colspan="3" class="bold">Scope 1 Total</td>
+      <td class="num bold">{{ scope1_co2e_tonnes | round(3) }}</td>
+      <td></td>
+    </tr>
+    </tbody>
+  </table>
+
+  <!-- Scope 2 breakdown -->
+  <h3>Scope 2 Breakdown</h3>
+  <table>
+    <thead><tr><th>Source</th><th>Quantity</th><th>Unit</th><th>tCO₂e</th><th>Source Citation</th></tr></thead>
+    <tbody>
+    {% for key, item in scope2_breakdown.items() %}
+    {% if item.co2e_kg is defined and item.co2e_kg > 0 %}
+    <tr>
+      <td>{{ key | replace("_", " ") | title }}</td>
+      <td class="num">{{ item.quantity | round(1) }}</td>
+      <td>{{ item.unit }}</td>
+      <td class="num bold">{{ (item.co2e_kg / 1000) | round(3) }}</td>
+      <td style="font-size:7pt;color:#6b7280;">{{ item.source }}</td>
+    </tr>
+    {% endif %}
+    {% endfor %}
+    <tr style="background:#0f172a;color:#e2e8f0;">
+      <td colspan="3" class="bold">Scope 2 Total</td>
+      <td class="num bold">{{ scope2_co2e_tonnes | round(3) }}</td>
+      <td></td>
+    </tr>
+    </tbody>
+  </table>
+
+  <!-- Scope 3 breakdown -->
+  <h3>Scope 3 Breakdown</h3>
+  <table>
+    <thead><tr><th>Source</th><th>Quantity</th><th>Unit</th><th>tCO₂e</th><th>Source Citation</th></tr></thead>
+    <tbody>
+    {% for key, item in scope3_breakdown.items() %}
+    {% if item.co2e_kg is defined and item.co2e_kg > 0 %}
+    <tr>
+      <td>{{ key | replace("_", " ") | title }}</td>
+      <td class="num">{{ item.quantity | round(1) }}</td>
+      <td>{{ item.unit }}</td>
+      <td class="num bold">{{ (item.co2e_kg / 1000) | round(3) }}</td>
+      <td style="font-size:7pt;color:#6b7280;">{{ item.source }}</td>
+    </tr>
+    {% endif %}
+    {% endfor %}
+    <tr style="background:#0f172a;color:#e2e8f0;">
+      <td colspan="3" class="bold">Scope 3 Total</td>
+      <td class="num bold">{{ scope3_co2e_tonnes | round(3) }}</td>
+      <td></td>
+    </tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════ ESG SCORES -->
+<div class="section-page">
+  <h2>ESG Performance Scores</h2>
+  <div class="narrative">{{ esg_narrative }}</div>
+
+  {% for label, score, weight in [
+      ("Environmental (E)", esg_score_e, "50% weight"),
+      ("Social (S)", esg_score_s, "30% weight"),
+      ("Governance (G)", esg_score_g, "20% weight"),
+      ("Total ESG Score", esg_score_total, "weighted")
+  ] %}
+  <div class="score-row">
+    <span class="score-label">{{ label }}<br/><span style="font-size:7pt;color:#9ca3af;">{{ weight }}</span></span>
+    <div class="score-bar-wrap">
+      <div class="score-bar {% if score < 40 %}low{% elif score < 65 %}medium{% endif %}"
+           style="width:{{ score }}%;"></div>
+    </div>
+    <span class="score-num">{{ score | round(1) }}</span>
+  </div>
+  {% endfor %}
+
+  <!-- Industry context -->
+  <div style="margin-top:4mm;padding:3mm;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:2mm;">
+    <strong style="font-size:8.5pt;">Industry Percentile: {{ industry_percentile | round(0) | int }}th</strong>
+    <span style="font-size:8pt;color:#374151;margin-left:3mm;">
+      Your total ESG score of {{ esg_score_total | round(1) }} places you in the
+      {{ industry_percentile | round(0) | int }}th percentile within the {{ industry_code }} industry.
+    </span>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════ GAPS + ROADMAP -->
+<div class="section-page">
+  <h2>Identified Gaps &amp; Improvement Roadmap</h2>
+  <div class="narrative">{{ roadmap_narrative }}</div>
+
+  <h3>Priority Actions</h3>
+  <div class="gap-list">
+    {% for gap in identified_gaps %}
+    <div class="gap-item {% if gap.priority == 'high' %}high{% elif gap.priority == 'low' %}low{% endif %}">
+      <span class="gap-priority">{{ gap.priority | upper }}</span>
+      <div class="gap-text">
+        <strong>{{ gap.title }}</strong>
+        {{ gap.description }}
+        {% if gap.estimated_co2_reduction_pct is defined and gap.estimated_co2_reduction_pct %}
+        <span style="font-size:7.5pt;color:#059669;margin-top:1mm;display:block;">
+          Potential CO₂ reduction: {{ gap.estimated_co2_reduction_pct }}%
+        </span>
+        {% endif %}
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+
+  <h3>12-Month Roadmap</h3>
+  <div class="roadmap-grid">
+    {% for quarter in ["Q1", "Q2", "Q3", "Q4"] %}
+    <div class="quarter-card">
+      <div class="quarter-header">{{ quarter }}</div>
+      <div class="quarter-body">
+        {% for action in recommendations %}
+        {% if action.quarter == quarter %}
+        <div class="quarter-action">{{ action.title }}</div>
+        {% endif %}
+        {% endfor %}
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════ DISCLAIMER -->
+<div class="disclaimer">
+  <strong>Disclaimer:</strong> {{ disclaimer }}
+</div>
+
+</body>
+</html>
