@@ -3,17 +3,18 @@ import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { getMe, getCompany, listSubmissions, createCompany, createSubmission } from "@/lib/api"
+import api from "@/lib/api"
 import Sidebar from "@/components/Sidebar"
-import { Plus, FileText, TrendingUp, Leaf, ChevronRight, ArrowRight } from "lucide-react"
+import { Plus, FileText, TrendingUp, Leaf, ChevronRight, ArrowRight, Mail, CheckCircle, Zap, BarChart3, Award } from "lucide-react"
 
 interface Submission {
-  submission_id: string
+  id: string           // API returns 'id'
   reporting_year: number
   status: string
 }
 
 interface Company {
-  company_id: string
+  id: string           // API returns 'id'
   name: string
   industry_code: string
   country_code: string
@@ -54,24 +55,27 @@ function RingChart({ pct, color, size = 84 }: { pct: number; color: string; size
 
 export default function DashboardPage() {
   const router = useRouter()
-  const [user, setUser] = useState<{ full_name: string; email: string; company_id?: string } | null>(null)
+  const [user, setUser] = useState<{ full_name: string; email: string; company_id?: string; email_verified?: boolean; subscription_plan?: string } | null>(null)
   const [company, setCompany] = useState<Company | null>(null)
   const [submissions, setSubmissions] = useState<Submission[]>([])
   const [showCompanyForm, setShowCompanyForm] = useState(false)
   const [companyForm, setCompanyForm] = useState({ name: "", industry_code: "technology", country_code: "DK", employee_count: 10, revenue_eur: 1000000 })
   const [loading, setLoading] = useState(true)
   const [creating, setCreating] = useState(false)
+  const [verifyBanner, setVerifyBanner] = useState(false)
+  const [resendSent, setResendSent] = useState(false)
 
   useEffect(() => {
     const token = localStorage.getItem("token")
     if (!token) { router.push("/login"); return }
     load()
-  }, [])
+  }, [router])
 
   async function load() {
     try {
       const me = await getMe()
       setUser(me)
+      setVerifyBanner(!me.email_verified)
       if (me.company_id) {
         const c = await getCompany(me.company_id)
         setCompany(c)
@@ -104,8 +108,17 @@ export default function DashboardPage() {
   async function handleNewSubmission() {
     if (!company) return
     const year = new Date().getFullYear() - 1
-    const sub = await createSubmission(company.company_id, year)
-    router.push(`/submit?id=${sub.submission_id}`)
+    const sub = await createSubmission(company.id, year)
+    router.push(`/submit?id=${sub.id}`)
+  }
+
+  async function resendVerification() {
+    try {
+      await api.post("/auth/resend-verification")
+      setResendSent(true)
+    } catch {
+      alert("Could not resend verification email.")
+    }
   }
 
   if (loading) {
@@ -122,9 +135,31 @@ export default function DashboardPage() {
 
   return (
     <div className="flex min-h-screen bg-gray-50">
-      <Sidebar companyName={company?.name} userEmail={user?.email} />
+      <Sidebar companyName={company?.name} userEmail={user?.email} subscriptionPlan={user?.subscription_plan} />
 
       <div className="ml-60 flex-1 flex flex-col">
+
+        {/* Email verification banner */}
+        {verifyBanner && (
+          <div className={`border-b px-8 py-3 flex items-center gap-3 ${resendSent ? "bg-green-50 border-green-200" : "bg-amber-50 border-amber-200"}`}>
+            {resendSent
+              ? <CheckCircle className="w-4 h-4 text-green-600 flex-shrink-0" />
+              : <Mail className="w-4 h-4 text-amber-600 flex-shrink-0" />
+            }
+            <p className={`text-sm ${resendSent ? "text-green-800" : "text-amber-800"}`}>
+              {resendSent
+                ? "Verification email sent! Check your inbox."
+                : <><strong>Verify your email</strong> — check your inbox for a confirmation link.</>
+              }
+            </p>
+            {!resendSent && (
+              <button onClick={resendVerification} className="ml-auto text-sm text-amber-700 font-semibold underline hover:text-amber-900">
+                Resend
+              </button>
+            )}
+            <button onClick={() => setVerifyBanner(false)} className={`${resendSent ? "text-green-400 hover:text-green-600" : "text-amber-400 hover:text-amber-600"} text-lg leading-none ml-2`}>×</button>
+          </div>
+        )}
 
         {/* Company setup */}
         {showCompanyForm && (
@@ -195,9 +230,26 @@ export default function DashboardPage() {
             </div>
 
             <div className="p-8 space-y-6">
+              {/* Upgrade banner (free plan only) */}
+              {user?.subscription_plan === "free" && (
+                <div className="bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-xl p-4 flex items-center justify-between gap-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 bg-green-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                      <Zap className="w-4 h-4 text-green-600" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold text-gray-900">You're on the Free plan</p>
+                      <p className="text-xs text-gray-500">Upgrade to Starter for PDF exports, 5 reports/year, and data export.</p>
+                    </div>
+                  </div>
+                  <Link href="/billing" className="btn-primary text-sm py-2 px-4 flex-shrink-0">
+                    Upgrade →
+                  </Link>
+                </div>
+              )}
+
               {/* KPI Cards */}
               <div className="grid grid-cols-3 gap-5">
-                {/* Reports ring */}
                 <div className="card flex items-center gap-5">
                   <RingChart pct={submissions.length === 0 ? 0 : completionPct} color="#22c55e" />
                   <div>
@@ -207,7 +259,6 @@ export default function DashboardPage() {
                   </div>
                 </div>
 
-                {/* Completion bar */}
                 <div className="card">
                   <div className="flex items-center justify-between mb-1">
                     <div className="text-sm font-semibold text-gray-700">Completion</div>
@@ -224,7 +275,6 @@ export default function DashboardPage() {
                   </div>
                 </div>
 
-                {/* Start entry CTA */}
                 <div
                   onClick={handleNewSubmission}
                   className="card border-2 border-dashed border-green-200 bg-green-50/30 flex flex-col items-center justify-center text-center cursor-pointer hover:bg-green-50 hover:border-green-300 transition-all group"
@@ -267,7 +317,7 @@ export default function DashboardPage() {
                     </thead>
                     <tbody className="divide-y divide-gray-50">
                       {submissions.map(sub => (
-                        <tr key={sub.submission_id} className="hover:bg-gray-50/50 transition-colors">
+                        <tr key={sub.id} className="hover:bg-gray-50/50 transition-colors">
                           <td className="px-6 py-4">
                             <div className="font-semibold text-gray-900">{sub.reporting_year} ESG Report</div>
                             <div className="text-xs text-gray-400">{company.name}</div>
@@ -279,17 +329,17 @@ export default function DashboardPage() {
                           </td>
                           <td className="px-6 py-4 text-right">
                             {sub.status === "incomplete" && (
-                              <Link href={`/submit?id=${sub.submission_id}`} className="inline-flex items-center gap-1 text-sm font-medium text-green-600 hover:text-green-700">
+                              <Link href={`/submit?id=${sub.id}`} className="inline-flex items-center gap-1 text-sm font-medium text-green-600 hover:text-green-700">
                                 Continue <ArrowRight className="w-3.5 h-3.5" />
                               </Link>
                             )}
                             {sub.status === "submitted" && (
-                              <Link href={`/submit?id=${sub.submission_id}&review=1`} className="inline-flex items-center gap-1 text-sm font-medium text-blue-600 hover:text-blue-700">
+                              <Link href={`/submit?id=${sub.id}&review=1`} className="inline-flex items-center gap-1 text-sm font-medium text-blue-600 hover:text-blue-700">
                                 Review & Generate <ArrowRight className="w-3.5 h-3.5" />
                               </Link>
                             )}
                             {sub.status === "processed" && (
-                              <Link href={`/report/${sub.submission_id}`} className="inline-flex items-center gap-1 text-sm font-medium text-green-600 hover:text-green-700">
+                              <Link href={`/report/${sub.id}`} className="inline-flex items-center gap-1 text-sm font-medium text-green-600 hover:text-green-700">
                                 View Report <ChevronRight className="w-3.5 h-3.5" />
                               </Link>
                             )}
@@ -300,6 +350,30 @@ export default function DashboardPage() {
                   </table>
                 </div>
               )}
+
+              {/* Quick links */}
+              <div className="grid grid-cols-2 gap-4">
+                <Link href="/pricing" className="card flex items-center gap-4 hover:shadow-md transition-shadow group">
+                  <div className="w-10 h-10 bg-green-50 rounded-xl flex items-center justify-center group-hover:bg-green-100 transition-colors flex-shrink-0">
+                    <Zap className="w-5 h-5 text-green-600" />
+                  </div>
+                  <div>
+                    <div className="font-semibold text-gray-900 text-sm">View Plans</div>
+                    <div className="text-xs text-gray-500">Compare features & pricing</div>
+                  </div>
+                  <ChevronRight className="w-4 h-4 text-gray-400 ml-auto" />
+                </Link>
+                <Link href="/billing" className="card flex items-center gap-4 hover:shadow-md transition-shadow group">
+                  <div className="w-10 h-10 bg-blue-50 rounded-xl flex items-center justify-center group-hover:bg-blue-100 transition-colors flex-shrink-0">
+                    <FileText className="w-5 h-5 text-blue-600" />
+                  </div>
+                  <div>
+                    <div className="font-semibold text-gray-900 text-sm">Billing</div>
+                    <div className="text-xs text-gray-500">Manage subscription & invoices</div>
+                  </div>
+                  <ChevronRight className="w-4 h-4 text-gray-400 ml-auto" />
+                </Link>
+              </div>
             </div>
           </>
         )}

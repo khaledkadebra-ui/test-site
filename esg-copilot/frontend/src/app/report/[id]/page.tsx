@@ -1,10 +1,10 @@
 "use client"
 import { useEffect, useState } from "react"
 import { useParams, useRouter } from "next/navigation"
-import { getReportStatus, getReport } from "@/lib/api"
+import { getReportStatus, getReport, getPdfUrl } from "@/lib/api"
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from "recharts"
 import Sidebar from "@/components/Sidebar"
-import { TrendingUp, Wind, Users, Building2, Download, ArrowLeft } from "lucide-react"
+import { TrendingUp, Wind, Users, Building2, Download, ArrowLeft, Loader2, FileDown } from "lucide-react"
 
 const RATING_COLOR: Record<string, string> = { A: "#22c55e", B: "#84cc16", C: "#eab308", D: "#f97316", E: "#ef4444" }
 const SCOPE_COLORS = ["#22c55e", "#3b82f6", "#a855f7"]
@@ -19,8 +19,25 @@ export default function ReportPage() {
   const router = useRouter()
   const [status, setStatus] = useState("processing")
   const [report, setReport] = useState<Record<string, unknown> | null>(null)
+  const [pdfLoading, setPdfLoading] = useState(false)
 
   useEffect(() => { if (id) pollStatus() }, [id])
+
+  async function downloadPdf() {
+    setPdfLoading(true)
+    try {
+      const data = await getPdfUrl(id)
+      if (data.pdf_url) {
+        window.open(data.pdf_url, "_blank")
+      } else {
+        window.print()
+      }
+    } catch {
+      window.print()
+    } finally {
+      setPdfLoading(false)
+    }
+  }
 
   async function pollStatus() {
     try {
@@ -75,8 +92,15 @@ export default function ReportPage() {
               <p className="text-sm text-gray-500">AI-generated · DEFRA 2023 emission factors</p>
             </div>
           </div>
-          <button className="btn-secondary flex items-center gap-2 py-2" onClick={() => window.print()}>
-            <Download className="w-4 h-4" /> Export
+          <button
+            className="btn-primary flex items-center gap-2 py-2"
+            onClick={downloadPdf}
+            disabled={pdfLoading}
+          >
+            {pdfLoading
+              ? <><Loader2 className="w-4 h-4 animate-spin" /> Preparing…</>
+              : <><FileDown className="w-4 h-4" /> Download PDF</>
+            }
           </button>
         </div>
 

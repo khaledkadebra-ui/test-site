@@ -2,7 +2,7 @@
 
 from fastapi import APIRouter
 
-from app.api.v1.routes import auth, companies, submissions, documents, reports
+from app.api.v1.routes import auth, companies, submissions, documents, reports, billing
 
 api_router = APIRouter()
 
@@ -11,3 +11,4 @@ api_router.include_router(companies.router,   prefix="/companies",   tags=["comp
 api_router.include_router(submissions.router, prefix="/submissions", tags=["submissions"])
 api_router.include_router(documents.router,   prefix="/documents",   tags=["documents"])
 api_router.include_router(reports.router,     prefix="/reports",     tags=["reports"])
+api_router.include_router(billing.router,     prefix="/billing",     tags=["billing"])

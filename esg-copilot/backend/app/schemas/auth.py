@@ -34,5 +34,8 @@ class UserOut(BaseModel):
     role: str
     company_id: str | None
     is_active: bool
+    email_verified: bool = False
+    subscription_plan: str = "free"
+    subscription_status: str = "inactive"
 
     model_config = {"from_attributes": True}

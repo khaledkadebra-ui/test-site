@@ -3,11 +3,15 @@ Auth routes — ESG Copilot
 POST /auth/register
 POST /auth/login
 GET  /auth/me
+POST /auth/verify-email
+POST /auth/resend-verification
 """
 
+import uuid
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, HTTPException, Request, status
+from pydantic import BaseModel
 from sqlalchemy import select
 
 from app.core.database import get_db
@@ -17,6 +21,7 @@ from app.models.audit_log import AuditLog
 from app.models.user import User
 from app.schemas.auth import LoginRequest, RegisterRequest, TokenResponse, UserOut
 from app.core.config import settings
+from app.services.email_service import send_verification_email, send_welcome_email
 
 router = APIRouter()
 
@@ -28,11 +33,15 @@ async def register(body: RegisterRequest, request: Request, db: DB):
     if existing.scalar_one_or_none():
         raise HTTPException(status_code=409, detail="Email already registered")
 
+    verify_token = str(uuid.uuid4())
+
     user = User(
         email=body.email,
         password_hash=hash_password(body.password),
         full_name=body.full_name,
         role="company_admin",
+        email_verified=False,
+        email_verify_token=verify_token,
     )
     db.add(user)
     await db.flush()  # get user.id before commit
@@ -46,6 +55,11 @@ async def register(body: RegisterRequest, request: Request, db: DB):
         user_agent=request.headers.get("user-agent"),
     ))
 
+    await db.commit()
+
+    # Send verification email (non-blocking — failure doesn't break registration)
+    send_verification_email(user.email, user.full_name or "", verify_token)
+
     return UserOut(
         id=str(user.id),
         email=user.email,
@@ -53,6 +67,9 @@ async def register(body: RegisterRequest, request: Request, db: DB):
         role=user.role,
         company_id=None,
         is_active=user.is_active,
+        email_verified=user.email_verified,
+        subscription_plan=user.subscription_plan,
+        subscription_status=user.subscription_status,
     )
 
 
@@ -85,6 +102,8 @@ async def login(body: LoginRequest, request: Request, db: DB):
         company_id=str(user.company_id) if user.company_id else None,
     )
 
+    await db.commit()
+
     return TokenResponse(
         access_token=token,
         expires_in=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
@@ -100,4 +119,43 @@ async def me(current_user: CurrentUser):
         role=current_user.role,
         company_id=str(current_user.company_id) if current_user.company_id else None,
         is_active=current_user.is_active,
+        email_verified=current_user.email_verified,
+        subscription_plan=current_user.subscription_plan,
+        subscription_status=current_user.subscription_status,
     )
+
+
+class VerifyEmailRequest(BaseModel):
+    token: str
+
+
+@router.post("/verify-email")
+async def verify_email(body: VerifyEmailRequest, db: DB):
+    result = await db.execute(select(User).where(User.email_verify_token == body.token))
+    user = result.scalar_one_or_none()
+    if not user:
+        raise HTTPException(status_code=400, detail="Invalid or expired verification token")
+
+    if user.email_verified:
+        return {"message": "Email already verified"}
+
+    user.email_verified = True
+    user.email_verify_token = None
+    await db.commit()
+
+    send_welcome_email(user.email, user.full_name or "")
+
+    return {"message": "Email verified successfully"}
+
+
+@router.post("/resend-verification")
+async def resend_verification(current_user: CurrentUser, db: DB):
+    if current_user.email_verified:
+        return {"message": "Email already verified"}
+
+    token = str(uuid.uuid4())
+    current_user.email_verify_token = token
+    await db.commit()
+
+    send_verification_email(current_user.email, current_user.full_name or "", token)
+    return {"message": "Verification email sent"}

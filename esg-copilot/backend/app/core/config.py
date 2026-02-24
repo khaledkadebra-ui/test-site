@@ -13,6 +13,7 @@ class Settings(BaseSettings):
     SECRET_KEY: str = "change-me-in-production"
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24   # 24 hours
+    FRONTEND_URL: str = "http://localhost:3000"
 
     # ── Database ─────────────────────────────────────────────────────────────
     DATABASE_URL: str = "postgresql+asyncpg://postgres:postgres@localhost:5432/esg_copilot"
@@ -34,6 +35,16 @@ class Settings(BaseSettings):
 
     # ── CORS ─────────────────────────────────────────────────────────────────
     ALLOWED_ORIGINS: List[str] = ["http://localhost:3000"]
+
+    # ── Stripe Payments ───────────────────────────────────────────────────────
+    STRIPE_SECRET_KEY: str = ""
+    STRIPE_WEBHOOK_SECRET: str = ""
+    STRIPE_PRICE_STARTER: str = ""     # monthly price ID for Starter plan
+    STRIPE_PRICE_PRO: str = ""         # monthly price ID for Professional plan
+
+    # ── Email (Resend) ────────────────────────────────────────────────────────
+    RESEND_API_KEY: str = ""
+    EMAIL_FROM: str = "ESG Copilot <noreply@esg-copilot.com>"
 
     # ── Calculation Engine ────────────────────────────────────────────────────
     CALCULATION_ENGINE_VERSION: str = "1.0.0"

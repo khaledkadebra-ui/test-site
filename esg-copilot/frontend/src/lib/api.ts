@@ -141,3 +141,32 @@ export async function getPdfUrl(reportId: string) {
   const { data } = await api.get(`/reports/${reportId}/pdf`)
   return data
 }
+
+// ── Billing ────────────────────────────────────────────────────────────────────
+
+export async function getSubscriptionStatus() {
+  const { data } = await api.get("/billing/status")
+  return data
+}
+
+export async function createCheckoutSession(plan: string) {
+  const { data } = await api.post("/billing/checkout", { plan })
+  return data
+}
+
+export async function createPortalSession() {
+  const { data } = await api.post("/billing/portal")
+  return data
+}
+
+// ── Email verification ─────────────────────────────────────────────────────────
+
+export async function verifyEmail(token: string) {
+  const { data } = await api.post("/auth/verify-email", { token })
+  return data
+}
+
+export async function resendVerification() {
+  const { data } = await api.post("/auth/resend-verification")
+  return data
+}
