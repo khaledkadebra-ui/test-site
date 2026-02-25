@@ -436,7 +436,7 @@ async def _run_report_pipeline(report_id: str, submission_id: str):
                 esg_narrative=esg_narrative,
                 improvements_narrative=improvements_narrative,
                 roadmap_narrative=roadmap_narrative,
-                ai_model_used=settings.OPENAI_MODEL,
+                ai_model_used=settings.ANTHROPIC_MODEL,
                 calculation_engine_version=settings.CALCULATION_ENGINE_VERSION,
             )
             db.add(rr)
