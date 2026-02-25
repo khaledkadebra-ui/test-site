@@ -24,7 +24,7 @@ export default function RegisterPage() {
       router.push("/dashboard")
     } catch (err: unknown) {
       const msg = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail
-      setError(msg || "Registration failed")
+      setError(msg || "Registrering mislykkedes")
     } finally {
       setLoading(false)
     }
@@ -42,13 +42,13 @@ export default function RegisterPage() {
         </div>
         <div>
           <div className="text-4xl font-bold text-white leading-snug mb-4">
-            Start your ESG<br />journey today
+            Start din ESG-<br />rejse i dag
           </div>
           <p className="text-slate-400 text-base leading-relaxed mb-8">
-            Join hundreds of SMEs using ESG Copilot to measure, report, and improve their sustainability performance.
+            Slut dig til hundredvis af SMV&apos;er, der bruger ESG Copilot til at måle, rapportere og forbedre deres bæredygtighedspræstation.
           </p>
           <div className="space-y-3">
-            {["Free to get started", "DEFRA 2023 emission factors", "AI-generated board report", "GDPR compliant — EU data only"].map(f => (
+            {["Gratis at starte", "Energistyrelsen 2024 emissionsfaktorer", "AI-genereret VSME-rapport", "GDPR-kompatibel — EU-data"].map(f => (
               <div key={f} className="flex items-center gap-3 text-slate-300 text-sm">
                 <span className="w-5 h-5 rounded-full bg-green-500/20 flex items-center justify-center text-green-400 text-xs font-bold flex-shrink-0">✓</span>
                 {f}
@@ -56,7 +56,7 @@ export default function RegisterPage() {
             ))}
           </div>
         </div>
-        <div className="text-slate-600 text-xs">© 2025 ESG Copilot. All rights reserved.</div>
+        <div className="text-slate-600 text-xs">© 2026 ESG Copilot. Alle rettigheder forbeholdes.</div>
       </div>
 
       {/* Right panel */}
@@ -69,33 +69,33 @@ export default function RegisterPage() {
             <span className="font-bold text-xl">ESG Copilot</span>
           </div>
 
-          <h1 className="text-2xl font-bold text-gray-900 mb-1">Create your account</h1>
-          <p className="text-gray-500 text-sm mb-8">Get your first ESG report in under 10 minutes</p>
+          <h1 className="text-2xl font-bold text-gray-900 mb-1">Opret din konto</h1>
+          <p className="text-gray-500 text-sm mb-8">Modtag din første VSME-rapport på under 30 minutter</p>
 
           <form onSubmit={handleSubmit} className="space-y-5">
             <div>
-              <label className="label">Full Name</label>
-              <input className="input" placeholder="Jane Doe" value={form.fullName} onChange={set("fullName")} required />
+              <label className="label">Fulde navn</label>
+              <input className="input" placeholder="Jane Jensen" value={form.fullName} onChange={set("fullName")} required />
             </div>
             <div>
-              <label className="label">Work Email</label>
-              <input type="email" className="input" placeholder="you@company.com" value={form.email} onChange={set("email")} required />
+              <label className="label">E-mail (arbejde)</label>
+              <input type="email" className="input" placeholder="dig@virksomhed.dk" value={form.email} onChange={set("email")} required />
             </div>
             <div>
-              <label className="label">Password</label>
-              <input type="password" className="input" placeholder="Minimum 8 characters" value={form.password} onChange={set("password")} minLength={8} required />
+              <label className="label">Adgangskode</label>
+              <input type="password" className="input" placeholder="Minimum 8 tegn" value={form.password} onChange={set("password")} minLength={8} required />
             </div>
             {error && (
               <div className="bg-red-50 border border-red-200 rounded-lg px-4 py-3 text-red-600 text-sm">{error}</div>
             )}
             <button type="submit" className="btn-primary w-full py-3 text-base" disabled={loading}>
-              {loading ? "Creating account…" : "Create account"}
+              {loading ? "Opretter konto…" : "Opret konto"}
             </button>
           </form>
 
           <p className="text-center text-sm text-gray-500 mt-6">
-            Already have an account?{" "}
-            <Link href="/login" className="text-green-600 font-medium hover:text-green-700">Sign in</Link>
+            Har du allerede en konto?{" "}
+            <Link href="/login" className="text-green-600 font-medium hover:text-green-700">Log ind</Link>
           </p>
         </div>
       </div>

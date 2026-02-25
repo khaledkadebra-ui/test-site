@@ -89,6 +89,38 @@ class PolicyDataInput(BaseModel):
     supply_chain_code_of_conduct: bool = False
 
 
+class VSMEWorkforceDataIn(BaseModel):
+    """VSME B8-B10: Medarbejdere, arbejdsmiljø, løn og uddannelse."""
+    employees_total: Optional[int] = None
+    employees_male: Optional[int] = None
+    employees_female: Optional[int] = None
+    employees_permanent: Optional[int] = None
+    employees_temporary: Optional[int] = None
+    employees_full_time: Optional[int] = None
+    employees_part_time: Optional[int] = None
+    # B9
+    accident_count: Optional[int] = 0
+    fatalities: Optional[int] = 0
+    lost_time_injury_rate: Optional[float] = None
+    # B10
+    min_wage_pct: Optional[float] = None
+    gender_pay_gap_pct: Optional[float] = None
+    collective_bargaining_pct: Optional[float] = None
+    training_hours_total: Optional[float] = None
+
+
+class VSMEEnvironmentDataIn(BaseModel):
+    """VSME B4-B7: Forurening, biodiversitet, vand og affald."""
+    has_pollution_reporting: bool = False
+    pollution_notes: Optional[str] = None
+    biodiversity_sensitive_sites: Optional[int] = 0
+    water_withdrawal_m3: Optional[float] = None
+    water_stressed_m3: Optional[float] = None
+    waste_total_tonnes: Optional[float] = None
+    waste_recycled_pct: Optional[float] = None
+    waste_hazardous_tonnes: Optional[float] = None
+
+
 class CompletenessCheck(BaseModel):
     is_complete: bool
     completion_pct: int

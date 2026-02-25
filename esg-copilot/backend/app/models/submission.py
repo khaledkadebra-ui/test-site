@@ -31,6 +31,8 @@ class DataSubmission(Base):
     travel_data: Mapped["TravelData | None"] = relationship("TravelData", back_populates="submission", uselist=False, cascade="all, delete-orphan")
     procurement_data: Mapped["ProcurementData | None"] = relationship("ProcurementData", back_populates="submission", uselist=False, cascade="all, delete-orphan")
     policy_data: Mapped["ESGPolicyData | None"] = relationship("ESGPolicyData", back_populates="submission", uselist=False, cascade="all, delete-orphan")
+    workforce_data: Mapped["VSMEWorkforceData | None"] = relationship("VSMEWorkforceData", back_populates="submission", uselist=False, cascade="all, delete-orphan")
+    environment_data: Mapped["VSMEEnvironmentData | None"] = relationship("VSMEEnvironmentData", back_populates="submission", uselist=False, cascade="all, delete-orphan")
     reports: Mapped[list["Report"]] = relationship("Report", back_populates="submission")  # type: ignore[name-defined]
 
 
@@ -139,3 +141,65 @@ class ESGPolicyData(Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
     submission: Mapped[DataSubmission] = relationship("DataSubmission", back_populates="policy_data")
+
+
+class VSMEWorkforceData(Base):
+    """VSME B8 (Medarbejderkarakteristika), B9 (Arbejdsmiljø), B10 (Løn og uddannelse)."""
+    __tablename__ = "vsme_workforce_data"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    submission_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("data_submissions.id", ondelete="CASCADE"), nullable=False)
+
+    # B8 — Medarbejderkarakteristika
+    employees_total: Mapped[int | None] = mapped_column(Integer)
+    employees_male: Mapped[int | None] = mapped_column(Integer)
+    employees_female: Mapped[int | None] = mapped_column(Integer)
+    employees_permanent: Mapped[int | None] = mapped_column(Integer)
+    employees_temporary: Mapped[int | None] = mapped_column(Integer)
+    employees_full_time: Mapped[int | None] = mapped_column(Integer)
+    employees_part_time: Mapped[int | None] = mapped_column(Integer)
+
+    # B9 — Arbejdsmiljø og sikkerhed
+    accident_count: Mapped[int | None] = mapped_column(Integer, default=0)
+    fatalities: Mapped[int | None] = mapped_column(Integer, default=0)
+    lost_time_injury_rate: Mapped[float | None] = mapped_column(Numeric(8, 4))
+
+    # B10 — Løn, overenskomst og uddannelse
+    min_wage_pct: Mapped[float | None] = mapped_column(Numeric(5, 2))           # % over mindsteløn
+    gender_pay_gap_pct: Mapped[float | None] = mapped_column(Numeric(5, 2))     # lønforskel %
+    collective_bargaining_pct: Mapped[float | None] = mapped_column(Numeric(5, 2))
+    training_hours_total: Mapped[float | None] = mapped_column(Numeric(10, 1))
+
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+    submission: Mapped[DataSubmission] = relationship("DataSubmission", back_populates="workforce_data")
+
+
+class VSMEEnvironmentData(Base):
+    """VSME B4 (Forurening), B5 (Biodiversitet), B6 (Vand), B7 (Ressourcer og affald)."""
+    __tablename__ = "vsme_environment_data"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    submission_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("data_submissions.id", ondelete="CASCADE"), nullable=False)
+
+    # B4 — Forurening (kun hvis lovpligtigt eller frivillig EMS-rapportering)
+    has_pollution_reporting: Mapped[bool] = mapped_column(Boolean, default=False)
+    pollution_notes: Mapped[str | None] = mapped_column(Text)
+
+    # B5 — Biodiversitet
+    biodiversity_sensitive_sites: Mapped[int | None] = mapped_column(Integer, default=0)
+
+    # B6 — Vand
+    water_withdrawal_m3: Mapped[float | None] = mapped_column(Numeric(15, 2))
+    water_stressed_m3: Mapped[float | None] = mapped_column(Numeric(15, 2))
+
+    # B7 — Ressourceforbrug og affald
+    waste_total_tonnes: Mapped[float | None] = mapped_column(Numeric(15, 3))
+    waste_recycled_pct: Mapped[float | None] = mapped_column(Numeric(5, 2))
+    waste_hazardous_tonnes: Mapped[float | None] = mapped_column(Numeric(15, 3))
+
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+    submission: Mapped[DataSubmission] = relationship("DataSubmission", back_populates="environment_data")

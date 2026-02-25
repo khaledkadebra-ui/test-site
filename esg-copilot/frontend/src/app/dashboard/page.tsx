@@ -28,9 +28,9 @@ const STATUS_BADGE: Record<string, string> = {
 }
 
 const STATUS_LABEL: Record<string, string> = {
-  incomplete: "In Progress",
-  submitted:  "Submitted",
-  processed:  "Completed",
+  incomplete: "I gang",
+  submitted:  "Indsendt",
+  processed:  "Afsluttet",
 }
 
 function RingChart({ pct, color, size = 84 }: { pct: number; color: string; size?: number }) {
@@ -148,13 +148,13 @@ export default function DashboardPage() {
             }
             <p className={`text-sm ${resendSent ? "text-green-800" : "text-amber-800"}`}>
               {resendSent
-                ? "Verification email sent! Check your inbox."
-                : <><strong>Verify your email</strong> — check your inbox for a confirmation link.</>
+                ? "Bekræftelses-e-mail sendt! Tjek din indbakke."
+                : <><strong>Bekræft din e-mail</strong> — tjek din indbakke for et bekræftelseslink.</>
               }
             </p>
             {!resendSent && (
               <button onClick={resendVerification} className="ml-auto text-sm text-amber-700 font-semibold underline hover:text-amber-900">
-                Resend
+                Send igen
               </button>
             )}
             <button onClick={() => setVerifyBanner(false)} className={`${resendSent ? "text-green-400 hover:text-green-600" : "text-amber-400 hover:text-amber-600"} text-lg leading-none ml-2`}>×</button>
@@ -170,39 +170,43 @@ export default function DashboardPage() {
                   <Leaf className="w-5 h-5 text-green-600" />
                 </div>
                 <div>
-                  <h1 className="text-xl font-bold text-gray-900">Set up your company</h1>
-                  <p className="text-gray-500 text-sm">Takes about 30 seconds</p>
+                  <h1 className="text-xl font-bold text-gray-900">Opret din virksomhed</h1>
+                  <p className="text-gray-500 text-sm">Tager ca. 30 sekunder</p>
                 </div>
               </div>
               <div className="card">
                 <form onSubmit={handleCreateCompany} className="grid grid-cols-2 gap-5">
                   <div className="col-span-2">
-                    <label className="label">Company Name</label>
+                    <label className="label">Virksomhedsnavn</label>
                     <input className="input" placeholder="Acme ApS" value={companyForm.name} onChange={e => setCompanyForm(f => ({ ...f, name: e.target.value }))} required />
                   </div>
                   <div>
-                    <label className="label">Industry</label>
+                    <label className="label">Branche</label>
                     <select className="input" value={companyForm.industry_code} onChange={e => setCompanyForm(f => ({ ...f, industry_code: e.target.value }))}>
-                      {["technology","manufacturing","retail","finance","healthcare","construction","logistics","agriculture","hospitality"].map(i => (
-                        <option key={i} value={i}>{i.charAt(0).toUpperCase() + i.slice(1)}</option>
+                      {[
+                        ["technology","Teknologi"],["manufacturing","Produktion"],["retail","Detailhandel"],
+                        ["finance","Finans"],["healthcare","Sundhed"],["construction","Byggeri"],
+                        ["logistics","Logistik"],["agriculture","Landbrug"],["hospitality","Hotel & Restauration"],
+                      ].map(([v, l]) => (
+                        <option key={v} value={v}>{l}</option>
                       ))}
                     </select>
                   </div>
                   <div>
-                    <label className="label">Country (ISO 2-letter)</label>
+                    <label className="label">Land (ISO 2-bogstaver)</label>
                     <input className="input" placeholder="DK" value={companyForm.country_code} onChange={e => setCompanyForm(f => ({ ...f, country_code: e.target.value.toUpperCase() }))} maxLength={2} required />
                   </div>
                   <div>
-                    <label className="label">Number of Employees</label>
+                    <label className="label">Antal medarbejdere</label>
                     <input type="number" className="input" value={companyForm.employee_count} onChange={e => setCompanyForm(f => ({ ...f, employee_count: Number(e.target.value) }))} min={1} required />
                   </div>
                   <div>
-                    <label className="label">Annual Revenue (EUR)</label>
+                    <label className="label">Årlig omsætning (EUR)</label>
                     <input type="number" className="input" value={companyForm.revenue_eur} onChange={e => setCompanyForm(f => ({ ...f, revenue_eur: Number(e.target.value) }))} min={0} required />
                   </div>
                   <div className="col-span-2 pt-1">
                     <button type="submit" className="btn-primary w-full py-3 text-base" disabled={creating}>
-                      {creating ? "Saving…" : "Save & continue →"}
+                      {creating ? "Gemmer…" : "Gem & fortsæt →"}
                     </button>
                   </div>
                 </form>
@@ -217,15 +221,15 @@ export default function DashboardPage() {
             <div className="bg-white border-b border-gray-100 px-8 py-5 flex items-center justify-between">
               <div>
                 <h1 className="text-xl font-bold text-gray-900">
-                  Welcome back, {user?.full_name?.split(" ")[0] || "there"} 👋
+                  Velkommen tilbage, {user?.full_name?.split(" ")[0] || "der"}
                 </h1>
                 <p className="text-sm text-gray-500 mt-0.5">
-                  {company.name} · {company.industry_code} · {company.country_code} · {company.employee_count} employees
+                  {company.name} · {company.industry_code} · {company.country_code} · {company.employee_count} medarbejdere
                 </p>
               </div>
               <button onClick={handleNewSubmission} className="btn-primary flex items-center gap-2">
                 <Plus className="w-4 h-4" />
-                New Report Year
+                Nyt rapportår
               </button>
             </div>
 
@@ -238,8 +242,8 @@ export default function DashboardPage() {
                       <Zap className="w-4 h-4 text-green-600" />
                     </div>
                     <div>
-                      <p className="text-sm font-semibold text-gray-900">You're on the Free plan</p>
-                      <p className="text-xs text-gray-500">Upgrade to Starter for PDF exports, 5 reports/year, and data export.</p>
+                      <p className="text-sm font-semibold text-gray-900">Du er på Gratis-planen</p>
+                      <p className="text-xs text-gray-500">Opgrader til Starter for PDF-eksport, 5 rapporter/år og dataeksport.</p>
                     </div>
                   </div>
                   <Link href="/billing" className="btn-primary text-sm py-2 px-4 flex-shrink-0">
@@ -253,15 +257,15 @@ export default function DashboardPage() {
                 <div className="card flex items-center gap-5">
                   <RingChart pct={submissions.length === 0 ? 0 : completionPct} color="#22c55e" />
                   <div>
-                    <div className="text-sm font-semibold text-gray-500 mb-1">Reports</div>
+                    <div className="text-sm font-semibold text-gray-500 mb-1">Rapporter</div>
                     <div className="text-2xl font-bold text-gray-900">{submissions.length}</div>
-                    <div className="text-xs text-gray-400 mt-1">{completed} completed · {inProgress} in progress</div>
+                    <div className="text-xs text-gray-400 mt-1">{completed} afsluttede · {inProgress} i gang</div>
                   </div>
                 </div>
 
                 <div className="card">
                   <div className="flex items-center justify-between mb-1">
-                    <div className="text-sm font-semibold text-gray-700">Completion</div>
+                    <div className="text-sm font-semibold text-gray-700">Fuldstændighed</div>
                     <TrendingUp className="w-4 h-4 text-green-500" />
                   </div>
                   <div className="text-3xl font-bold text-gray-900 my-3">
@@ -271,7 +275,7 @@ export default function DashboardPage() {
                     <div className="h-full bg-green-500 rounded-full" style={{ width: `${completionPct}%` }} />
                   </div>
                   <div className="text-xs text-gray-400 mt-2">
-                    {submissions.length === 0 ? "No reports yet" : `${completed} of ${submissions.length} reports completed`}
+                    {submissions.length === 0 ? "Ingen rapporter endnu" : `${completed} af ${submissions.length} rapporter afsluttet`}
                   </div>
                 </div>
 
@@ -282,8 +286,8 @@ export default function DashboardPage() {
                   <div className="w-11 h-11 bg-green-500 rounded-xl flex items-center justify-center mb-3 shadow-md shadow-green-500/25 group-hover:scale-110 transition-transform">
                     <Plus className="w-5 h-5 text-white" />
                   </div>
-                  <div className="font-semibold text-gray-800">Start Data Entry</div>
-                  <div className="text-gray-500 text-xs mt-1">New ESG report year</div>
+                  <div className="font-semibold text-gray-800">Start dataindberetning</div>
+                  <div className="text-gray-500 text-xs mt-1">Nyt ESG-rapportår</div>
                 </div>
               </div>
 
@@ -293,24 +297,24 @@ export default function DashboardPage() {
                   <div className="w-14 h-14 bg-green-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
                     <FileText className="w-7 h-7 text-green-600" />
                   </div>
-                  <h3 className="text-lg font-semibold text-gray-900 mb-2">No reports yet</h3>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2">Ingen rapporter endnu</h3>
                   <p className="text-gray-500 text-sm mb-6 max-w-sm mx-auto">
-                    Start your first ESG data collection and get a full AI-generated report in minutes.
+                    Start din første ESG-dataindberetning og modtag en komplet AI-genereret VSME-rapport på få minutter.
                   </p>
                   <button onClick={handleNewSubmission} className="btn-primary mx-auto inline-flex items-center gap-2">
-                    <Plus className="w-4 h-4" /> Start data entry
+                    <Plus className="w-4 h-4" /> Start dataindberetning
                   </button>
                 </div>
               ) : (
                 <div className="card p-0 overflow-hidden">
                   <div className="px-6 py-4 border-b border-gray-50 flex items-center justify-between">
-                    <h2 className="font-semibold text-gray-900">ESG Reports</h2>
-                    <span className="text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">{submissions.length} total</span>
+                    <h2 className="font-semibold text-gray-900">VSME Rapporter</h2>
+                    <span className="text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">{submissions.length} i alt</span>
                   </div>
                   <table className="w-full">
                     <thead>
                       <tr className="bg-gray-50/80 border-b border-gray-100">
-                        <th className="text-left text-xs font-semibold text-gray-400 uppercase tracking-wider px-6 py-3">Report Year</th>
+                        <th className="text-left text-xs font-semibold text-gray-400 uppercase tracking-wider px-6 py-3">Rapportår</th>
                         <th className="text-left text-xs font-semibold text-gray-400 uppercase tracking-wider px-6 py-3">Status</th>
                         <th className="px-6 py-3"></th>
                       </tr>
@@ -319,7 +323,7 @@ export default function DashboardPage() {
                       {submissions.map(sub => (
                         <tr key={sub.id} className="hover:bg-gray-50/50 transition-colors">
                           <td className="px-6 py-4">
-                            <div className="font-semibold text-gray-900">{sub.reporting_year} ESG Report</div>
+                            <div className="font-semibold text-gray-900">{sub.reporting_year} VSME Rapport</div>
                             <div className="text-xs text-gray-400">{company.name}</div>
                           </td>
                           <td className="px-6 py-4">
@@ -330,17 +334,17 @@ export default function DashboardPage() {
                           <td className="px-6 py-4 text-right">
                             {sub.status === "incomplete" && (
                               <Link href={`/submit?id=${sub.id}`} className="inline-flex items-center gap-1 text-sm font-medium text-green-600 hover:text-green-700">
-                                Continue <ArrowRight className="w-3.5 h-3.5" />
+                                Fortsæt <ArrowRight className="w-3.5 h-3.5" />
                               </Link>
                             )}
                             {sub.status === "submitted" && (
                               <Link href={`/submit?id=${sub.id}&review=1`} className="inline-flex items-center gap-1 text-sm font-medium text-blue-600 hover:text-blue-700">
-                                Review & Generate <ArrowRight className="w-3.5 h-3.5" />
+                                Gennemgang & Generer <ArrowRight className="w-3.5 h-3.5" />
                               </Link>
                             )}
                             {sub.status === "processed" && (
                               <Link href={`/report/${sub.id}`} className="inline-flex items-center gap-1 text-sm font-medium text-green-600 hover:text-green-700">
-                                View Report <ChevronRight className="w-3.5 h-3.5" />
+                                Se rapport <ChevronRight className="w-3.5 h-3.5" />
                               </Link>
                             )}
                           </td>
@@ -358,8 +362,8 @@ export default function DashboardPage() {
                     <Zap className="w-5 h-5 text-green-600" />
                   </div>
                   <div>
-                    <div className="font-semibold text-gray-900 text-sm">View Plans</div>
-                    <div className="text-xs text-gray-500">Compare features & pricing</div>
+                    <div className="font-semibold text-gray-900 text-sm">Se abonnementer</div>
+                    <div className="text-xs text-gray-500">Sammenlign funktioner og priser</div>
                   </div>
                   <ChevronRight className="w-4 h-4 text-gray-400 ml-auto" />
                 </Link>
@@ -368,8 +372,8 @@ export default function DashboardPage() {
                     <FileText className="w-5 h-5 text-blue-600" />
                   </div>
                   <div>
-                    <div className="font-semibold text-gray-900 text-sm">Billing</div>
-                    <div className="text-xs text-gray-500">Manage subscription & invoices</div>
+                    <div className="font-semibold text-gray-900 text-sm">Fakturering</div>
+                    <div className="text-xs text-gray-500">Administrer abonnement og fakturaer</div>
                   </div>
                   <ChevronRight className="w-4 h-4 text-gray-400 ml-auto" />
                 </Link>

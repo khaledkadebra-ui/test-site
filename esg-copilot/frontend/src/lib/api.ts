@@ -97,6 +97,16 @@ export async function savePolicies(submissionId: string, payload: Record<string,
   return data
 }
 
+export async function saveWorkforce(submissionId: string, payload: Record<string, unknown>) {
+  const { data } = await api.patch(`/submissions/${submissionId}/workforce`, payload)
+  return data
+}
+
+export async function saveEnvironment(submissionId: string, payload: Record<string, unknown>) {
+  const { data } = await api.patch(`/submissions/${submissionId}/environment`, payload)
+  return data
+}
+
 export async function getCompleteness(submissionId: string) {
   const { data } = await api.get(`/submissions/${submissionId}/completeness`)
   return data

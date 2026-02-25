@@ -63,6 +63,7 @@ def build_pdf(
     executive_summary: str,
     co2_narrative: str,
     esg_narrative: str,
+    improvements_narrative: str,
     roadmap_narrative: str,
     # Legal
     disclaimer: str,
@@ -111,6 +112,7 @@ def build_pdf(
         "executive_summary": executive_summary,
         "co2_narrative": co2_narrative,
         "esg_narrative": esg_narrative,
+        "improvements_narrative": improvements_narrative,
         "roadmap_narrative": roadmap_narrative,
         # Legal
         "disclaimer": disclaimer,

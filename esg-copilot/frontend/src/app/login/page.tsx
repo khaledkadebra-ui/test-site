@@ -21,7 +21,7 @@ export default function LoginPage() {
       router.push("/dashboard")
     } catch (err: unknown) {
       const msg = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail
-      setError(msg || "Invalid email or password")
+      setError(msg || "Ugyldig e-mail eller adgangskode")
     } finally {
       setLoading(false)
     }
@@ -39,13 +39,13 @@ export default function LoginPage() {
         </div>
         <div>
           <div className="text-4xl font-bold text-white leading-snug mb-4">
-            AI-powered ESG<br />reporting for SMEs
+            AI-drevet ESG-<br />rapportering for SMV&apos;er
           </div>
           <p className="text-slate-400 text-base leading-relaxed mb-8">
-            Calculate your carbon footprint, score your ESG performance, and get a board-ready report in minutes.
+            Beregn dit klimaaftryk, score din ESG-præstation og modtag en bestyrelsesklar VSME-rapport på få minutter.
           </p>
           <div className="grid grid-cols-3 gap-4">
-            {[["CO₂", "Scope 1, 2 & 3"], ["ESG Score", "A–E rating"], ["Report", "AI-generated"]].map(([title, sub]) => (
+            {[["CO₂", "Scope 1, 2 & 3"], ["ESG-score", "A–E-vurdering"], ["Rapport", "AI-genereret"]].map(([title, sub]) => (
               <div key={title} className="bg-white/5 rounded-xl p-4 border border-white/10">
                 <div className="text-green-400 font-bold text-lg">{title}</div>
                 <div className="text-slate-400 text-xs mt-1">{sub}</div>
@@ -53,7 +53,7 @@ export default function LoginPage() {
             ))}
           </div>
         </div>
-        <div className="text-slate-600 text-xs">© 2025 ESG Copilot. All rights reserved.</div>
+        <div className="text-slate-600 text-xs">© 2026 ESG Copilot. Alle rettigheder forbeholdes.</div>
       </div>
 
       {/* Right panel */}
@@ -66,29 +66,29 @@ export default function LoginPage() {
             <span className="font-bold text-xl">ESG Copilot</span>
           </div>
 
-          <h1 className="text-2xl font-bold text-gray-900 mb-1">Welcome back</h1>
-          <p className="text-gray-500 text-sm mb-8">Sign in to your ESG Copilot account</p>
+          <h1 className="text-2xl font-bold text-gray-900 mb-1">Velkommen tilbage</h1>
+          <p className="text-gray-500 text-sm mb-8">Log ind på din ESG Copilot-konto</p>
 
           <form onSubmit={handleSubmit} className="space-y-5">
             <div>
-              <label className="label">Work Email</label>
-              <input type="email" className="input" placeholder="you@company.com" value={email} onChange={e => setEmail(e.target.value)} required />
+              <label className="label">E-mail (arbejde)</label>
+              <input type="email" className="input" placeholder="dig@virksomhed.dk" value={email} onChange={e => setEmail(e.target.value)} required />
             </div>
             <div>
-              <label className="label">Password</label>
+              <label className="label">Adgangskode</label>
               <input type="password" className="input" placeholder="••••••••" value={password} onChange={e => setPassword(e.target.value)} required />
             </div>
             {error && (
               <div className="bg-red-50 border border-red-200 rounded-lg px-4 py-3 text-red-600 text-sm">{error}</div>
             )}
             <button type="submit" className="btn-primary w-full py-3 text-base" disabled={loading}>
-              {loading ? "Signing in…" : "Sign in"}
+              {loading ? "Logger ind…" : "Log ind"}
             </button>
           </form>
 
           <p className="text-center text-sm text-gray-500 mt-6">
-            No account?{" "}
-            <Link href="/register" className="text-green-600 font-medium hover:text-green-700">Create one free</Link>
+            Ingen konto?{" "}
+            <Link href="/register" className="text-green-600 font-medium hover:text-green-700">Opret en gratis</Link>
           </p>
         </div>
       </div>

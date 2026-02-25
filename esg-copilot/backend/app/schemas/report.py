@@ -50,6 +50,7 @@ class ReportOut(BaseModel):
     executive_summary: str
     co2_narrative: str
     esg_narrative: str
+    improvements_narrative: str
     roadmap_narrative: str
 
     pdf_url: Optional[str]

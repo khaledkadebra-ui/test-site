@@ -10,9 +10,10 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.core.database import Base
 
 _DISCLAIMER = (
-    "This report is an AI-generated draft. CO2 calculations use published emission factors "
-    "(IPCC AR6, DEFRA 2023, IEA 2023) but have not been independently verified. "
-    "This report does not constitute CSRD compliance certification or assurance."
+    "Denne rapport er et AI-genereret udkast. CO2-beregningerne er baseret på anerkendte "
+    "emissionsfaktorer (Energistyrelsen 2024, DEFRA 2024, IPCC AR6) og data indberettet af "
+    "virksomheden, men er ikke uafhængigt verificeret. Rapporten udgør ikke CSRD-overholdelse "
+    "eller uafhængig revision i henhold til VSME Basic Modul (EFRAG, 2024)."
 )
 
 
@@ -71,6 +72,7 @@ class ReportResults(Base):
     executive_summary: Mapped[str | None] = mapped_column(Text)
     co2_narrative: Mapped[str | None] = mapped_column(Text)
     esg_narrative: Mapped[str | None] = mapped_column(Text)
+    improvements_narrative: Mapped[str | None] = mapped_column(Text)
     roadmap_narrative: Mapped[str | None] = mapped_column(Text)
 
     calculation_engine_version: Mapped[str] = mapped_column(String(20), nullable=False, default="1.0.0")

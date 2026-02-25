@@ -1,13 +1,6 @@
 """
-AI Report Writer — ESG Copilot
-================================
-Generates narrative text sections for the ESG report.
-
-CRITICAL RULES (enforced in every system prompt):
-1. All numbers must come from the calculation engine — never invented by AI.
-2. Never claim CSRD compliance or certification.
-3. Always include the AI-generated draft disclaimer.
-4. Write factually; avoid marketing language.
+AI-rapportskriver — ESG Copilot (VSME Basic Modul)
+Genererer narrative tekstafsnit til VSME-rapporten på dansk.
 """
 
 from .llm_client import LLMClient
@@ -15,24 +8,49 @@ from ..esg_engine.calculator import CalculationReport
 from ..esg_engine.scorer import ESGScore
 from ..esg_engine.gap_analyzer import GapReport
 
-_SYSTEM_PROMPT = """You are an expert ESG analyst writing a professional sustainability screening \
-report for a small or medium-sized business.
+_SYSTEM_PROMPT = (
+    "Du er en erfaren ESG-analytiker, der skriver en professionel bæredygtighedsrapport "
+    "på dansk for en lille eller mellemstor virksomhed i henhold til VSME Basic Modul (EFRAG, 2024).\n\n"
+    "OBLIGATORISKE REGLER:\n"
+    "1. Brug KUN de præcise tal fra brugerens besked. Afrund ikke, estimer ikke og opfind ikke tal.\n"
+    "2. Angiv aldrig, at rapporten udgør CSRD-overholdelse eller uafhængig verifikation.\n"
+    "3. Afslut hvert afsnit med: "
+    '"⚠ Denne rapport er et AI-genereret udkast. Tallene er baseret på data indberettet '
+    'af virksomheden og er ikke uafhængigt verificeret."\n'
+    "4. Skriv i en professionel, faktabaseret tone. Undgå superlativer og markedsføringssprog.\n"
+    "5. Vær konkret: henvis til faktiske tal og identificerede mangler.\n"
+    "6. Skriv udelukkende på dansk.\n"
+)
 
-MANDATORY RULES — violation is not acceptable:
-1. Use ONLY the exact figures provided in the user message. Never round, estimate, or invent numbers.
-2. Never state or imply that this report constitutes CSRD compliance, regulatory assurance, or \
-independent verification.
-3. Always end every section with this disclaimer on a new line:
-   "⚠ This report is an AI-generated draft. Figures are based on data provided by the company \
-and have not been independently verified."
-4. Write in a professional, factual tone. Avoid superlatives and marketing language.
-5. Be specific: reference actual figures and identified gaps, not generic ESG advice.
-6. Acknowledge data limitations where inputs were estimated or not provided.
-"""
+_LABELS = {
+    "natural_gas": "Naturgas", "diesel": "Diesel", "petrol": "Benzin",
+    "lpg": "Flaskegas (LPG)", "heating_oil": "Fyringsolie", "coal": "Kul",
+    "biomass_wood_chips": "Biomasse", "company_car": "Firmabiler",
+    "company_van": "Varevogne", "company_truck": "Lastbiler",
+    "electricity": "El (net)", "district_heating": "Fjernvarme",
+    "air_short_haul": "Kortdistancefly", "air_long_haul_economy": "Langdistancefly (economy)",
+    "air_long_haul_business": "Langdistancefly (business)", "rail": "Tog",
+    "rental_car": "Lejebil", "taxi": "Taxa",
+    "employee_commuting": "Medarbejderpendling",
+    "purchased_goods": "Indkøbte varer og tjenester",
+}
+
+
+def _fmt_breakdown(bd: dict) -> str:
+    if not bd:
+        return "  Ingen data indberettet."
+    lines = []
+    for k, v in bd.items():
+        label = _LABELS.get(k, k)
+        lines.append(
+            f"  {label}: {v['kg_co2e'] / 1000:.2f} tCO2e "
+            f"(faktor: {v['factor_value']} {v['factor_unit']})"
+        )
+    return "\n".join(lines)
 
 
 class ReportWriter:
-    """Generates all narrative sections of the ESG report using the LLM."""
+    """Genererer alle narrative afsnit af VSME-rapporten ved hjælp af LLM."""
 
     def __init__(self):
         self.llm = LLMClient()
@@ -44,38 +62,40 @@ class ReportWriter:
         calc: CalculationReport,
         score: ESGScore,
         gaps: GapReport,
+        revenue_dkk: float = 0,
+        employee_count: int = 0,
     ) -> str:
-        prompt = f"""Write an executive summary for the ESG screening report of **{company_name}** \
-for the reporting year **{reporting_year}**.
+        ghg_intensity = ""
+        if revenue_dkk and revenue_dkk > 0:
+            intensity = calc.total_tonnes / (revenue_dkk / 1_000_000)
+            ghg_intensity = f"GHG-intensitet: {intensity:.2f} tCO2e pr. mio. DKK omsætning\n"
 
-=== CALCULATED DATA (use exact figures) ===
-GHG Emissions:
-  Scope 1:  {calc.scope1_tonnes:.1f} tCO2e
-  Scope 2:  {calc.scope2_tonnes:.1f} tCO2e
-  Scope 3:  {calc.scope3_tonnes:.1f} tCO2e
-  TOTAL:    {calc.total_tonnes:.1f} tCO2e
-
-ESG Score:  {score.total}/100  (Rating: {score.rating})
-  Environmental: {score.environmental.score:.1f}/100  ({score.environmental.rating})
-  Social:        {score.social.score:.1f}/100  ({score.social.rating})
-  Governance:    {score.governance.score:.1f}/100  ({score.governance.rating})
-
-Industry Percentile: {score.industry_percentile}th percentile
-
-Gaps Identified: {gaps.total_gaps} total ({gaps.high_priority_count} high-priority)
-Quick Wins Available: {len(gaps.quick_wins)} low-effort, high-impact actions
-Potential Score Improvement: +{gaps.total_potential_score_gain:.0f} points with recommended actions
-
-=== FORMAT ===
-Write exactly 4 paragraphs (350–420 words total):
-1. Company overview and scope of this report
-2. GHG emissions performance and key drivers
-3. ESG score highlights — what's strong, what needs work
-4. Top 3 recommended next steps
-
-End with the mandatory disclaimer."""
-
-        return await self.llm.generate(_SYSTEM_PROMPT, prompt, max_tokens=600)
+        prompt = (
+            f"Skriv et sammendrag (ledelsesoversigt) til VSME-bæredygtighedsrapporten "
+            f"for **{company_name}** for rapporteringsåret **{reporting_year}**.\n\n"
+            f"=== BEREGNET DATA ===\n"
+            f"Drivhusgasemissioner (B3):\n"
+            f"  Scope 1: {calc.scope1_tonnes:.1f} tCO2e (direkte emissioner)\n"
+            f"  Scope 2: {calc.scope2_tonnes:.1f} tCO2e (indkøbt energi)\n"
+            f"  Scope 3: {calc.scope3_tonnes:.1f} tCO2e (værdikæde, estimeret)\n"
+            f"  I ALT:   {calc.total_tonnes:.1f} tCO2e\n"
+            f"{ghg_intensity}\n"
+            f"ESG-score: {score.total}/100 (Vurdering: {score.rating})\n"
+            f"  Miljø (E):     {score.environmental.score:.1f}/100 ({score.environmental.rating})\n"
+            f"  Sociale (S):   {score.social.score:.1f}/100 ({score.social.rating})\n"
+            f"  Lederskab (G): {score.governance.score:.1f}/100 ({score.governance.rating})\n\n"
+            f"Branchepercentil: {score.industry_percentile}. percentil\n"
+            f"Identificerede mangler: {gaps.total_gaps} i alt ({gaps.high_priority_count} højprioriterede)\n"
+            f"Potentiel score-forbedring: +{gaps.total_potential_score_gain:.0f} point\n\n"
+            f"=== FORMAT ===\n"
+            f"Skriv præcis 4 afsnit (350-420 ord):\n"
+            f"1. Virksomhedsoverview og rapportens omfang (VSME B1)\n"
+            f"2. Klimaaftryk og drivhusgasemissioner\n"
+            f"3. ESG-score — styrker og forbedringsområder\n"
+            f"4. De 3 vigtigste næste skridt\n\n"
+            f"Afslut med den obligatoriske ansvarsfraskrivelse."
+        )
+        return await self.llm.generate(_SYSTEM_PROMPT, prompt, max_tokens=700)
 
     async def write_co2_narrative(
         self,
@@ -83,79 +103,108 @@ End with the mandatory disclaimer."""
         reporting_year: int,
         calc: CalculationReport,
         industry_code: str,
+        country_code: str = "DK",
+        revenue_dkk: float = 0,
+        employee_count: int = 0,
     ) -> str:
-        def _format_breakdown(bd: dict) -> str:
-            if not bd:
-                return "  No data provided."
-            return "\n".join(
-                f"  {k}: {v['kg_co2e'] / 1000:.2f} tCO2e "
-                f"(factor: {v['factor_value']} {v['factor_unit']}, source: {v['source_citation']})"
-                for k, v in bd.items()
-            )
+        ghg_txt = ""
+        if revenue_dkk and revenue_dkk > 0:
+            ghg_txt = f"\nGHG-intensitet: {calc.total_tonnes / (revenue_dkk / 1_000_000):.2f} tCO2e pr. mio. DKK"
 
-        prompt = f"""Write the GHG Emissions Analysis section for **{company_name}** ({reporting_year}).
+        warnings_txt = "; ".join(calc.warnings) if calc.warnings else "Ingen"
 
-=== CALCULATED EMISSIONS ===
-SCOPE 1 — {calc.scope1_tonnes:.1f} tCO2e (direct emissions):
-{_format_breakdown(calc.scope1_breakdown)}
-
-SCOPE 2 — {calc.scope2_tonnes:.1f} tCO2e (purchased energy):
-{_format_breakdown(calc.scope2_breakdown)}
-
-SCOPE 3 — {calc.scope3_tonnes:.1f} tCO2e (value chain, estimated):
-{_format_breakdown(calc.scope3_breakdown)}
-
-TOTAL: {calc.total_tonnes:.1f} tCO2e
-
-Data quality warnings: {'; '.join(calc.warnings) if calc.warnings else 'None'}
-
-Industry: {industry_code}
-
-=== FORMAT ===
-Write 3 paragraphs (280–350 words total):
-1. Methodology note — GHG Protocol scopes, emission factor sources (cite IPCC/DEFRA/IEA by name), \
-location-based Scope 2 method used
-2. Breakdown analysis — biggest sources, scope proportions, what drives the footprint
-3. Data limitations — what was estimated, what was not provided, uncertainty in Scope 3
-
-End with the mandatory disclaimer."""
-
-        return await self.llm.generate(_SYSTEM_PROMPT, prompt, max_tokens=500)
+        prompt = (
+            f"Skriv afsnittet 'B3 — Energi og drivhusgasemissioner' for **{company_name}** ({reporting_year}).\n\n"
+            f"SCOPE 1 — {calc.scope1_tonnes:.1f} tCO2e:\n{_fmt_breakdown(calc.scope1_breakdown)}\n\n"
+            f"SCOPE 2 — {calc.scope2_tonnes:.1f} tCO2e:\n{_fmt_breakdown(calc.scope2_breakdown)}\n\n"
+            f"SCOPE 3 — {calc.scope3_tonnes:.1f} tCO2e:\n{_fmt_breakdown(calc.scope3_breakdown)}\n\n"
+            f"I ALT: {calc.total_tonnes:.1f} tCO2e{ghg_txt}\n"
+            f"Advarsler: {warnings_txt}\n"
+            f"Branche: {industry_code} | Land: {country_code}\n\n"
+            f"Skriv 3 afsnit (280-350 ord):\n"
+            f"1. Metode (GHG-protokol, Energistyrelsen 2024 for el, DEFRA 2024 for brændstoffer, VSME B3)\n"
+            f"2. Emissionsanalyse — vigtigste kilder og scope-fordeling i procent\n"
+            f"3. Databegrænsninger og usikkerhed i Scope 3\n\n"
+            f"Afslut med ansvarsfraskrivelse."
+        )
+        return await self.llm.generate(_SYSTEM_PROMPT, prompt, max_tokens=550)
 
     async def write_esg_narrative(
         self,
         company_name: str,
         score: ESGScore,
+        workforce_data: dict | None = None,
     ) -> str:
-        e_gaps = "; ".join(score.environmental.gaps) or "None identified"
-        s_gaps = "; ".join(score.social.gaps) or "None identified"
-        g_gaps = "; ".join(score.governance.gaps) or "None identified"
+        wf = ""
+        if workforce_data:
+            t = workforce_data.get("employees_total", 0)
+            if t:
+                wf = (
+                    f"\nMedarbejdere (B8-B10): {t} ansatte "
+                    f"({workforce_data.get('employees_male', 0)} mænd, "
+                    f"{workforce_data.get('employees_female', 0)} kvinder), "
+                    f"{workforce_data.get('accident_count', 0)} ulykker, "
+                    f"{workforce_data.get('training_hours_total', 0)} uddannelsestimer"
+                )
 
-        prompt = f"""Write the ESG Score Analysis section for **{company_name}**.
+        e_gaps = "; ".join(score.environmental.gaps) or "Ingen identificeret"
+        s_gaps = "; ".join(score.social.gaps) or "Ingen identificeret"
+        g_gaps = "; ".join(score.governance.gaps) or "Ingen identificeret"
 
-=== ESG SCORES ===
-Overall Score: {score.total}/100 (Rating: {score.rating})
-Industry Percentile: {score.industry_percentile}th
+        prompt = (
+            f"Skriv ESG-scoreafsnittet for **{company_name}**.\n\n"
+            f"Score: {score.total}/100 ({score.rating}) | Percentil: {score.industry_percentile}.{wf}\n"
+            f"Miljø (E) {score.environmental.rating}: {score.environmental.score:.1f}/100 — Mangler: {e_gaps}\n"
+            f"Sociale (S) {score.social.rating}: {score.social.score:.1f}/100 — Mangler: {s_gaps}\n"
+            f"Lederskab (G) {score.governance.rating}: {score.governance.score:.1f}/100 — Mangler: {g_gaps}\n\n"
+            f"Skriv 3 afsnit (250-320 ord):\n"
+            f"1. Score-fortolkning og branchekontekst\n"
+            f"2. Miljøpræstation — styrker og mangler konkret beskrevet\n"
+            f"3. Sociale og ledelsesmæssige forhold (B8-B11)\n\n"
+            f"Afslut med ansvarsfraskrivelse."
+        )
+        return await self.llm.generate(_SYSTEM_PROMPT, prompt, max_tokens=550)
 
-Environmental ({score.environmental.rating}): {score.environmental.score:.1f}/100
-  Gaps: {e_gaps}
+    async def write_improvements(
+        self,
+        company_name: str,
+        score: ESGScore,
+        gaps: GapReport,
+        calc: CalculationReport,
+    ) -> str:
+        """Foreslåede tiltag og forbedringer med SMART-mål."""
+        lines = [
+            f"- [{a.category}] {a.title} "
+            f"(prioritet: {a.priority}, {a.timeline}, +{a.score_improvement_pts:.0f}pt, "
+            f"{a.estimated_co2_reduction_pct:.0f}% CO2)"
+            for a in gaps.actions[:6]
+        ]
+        qw = [a.title for a in gaps.quick_wins]
+        proj = min(score.total + gaps.total_potential_score_gain, 100)
 
-Social ({score.social.rating}): {score.social.score:.1f}/100
-  Gaps: {s_gaps}
-
-Governance ({score.governance.rating}): {score.governance.score:.1f}/100
-  Gaps: {g_gaps}
-
-=== FORMAT ===
-Write 3 paragraphs (250–320 words total):
-1. Overall score interpretation and industry context
-2. Environmental performance — strengths and gaps
-3. Social and Governance performance — strengths and key gaps to address
-
-Be specific about each gap. Do not pad with generic ESG definitions.
-End with the mandatory disclaimer."""
-
-        return await self.llm.generate(_SYSTEM_PROMPT, prompt, max_tokens=500)
+        prompt = (
+            f"Skriv afsnittet 'Foreslåede tiltag og forbedringer' for **{company_name}**.\n\n"
+            f"Nuværende ESG-score: {score.total}/100 ({score.rating}) | Emissioner: {calc.total_tonnes:.1f} tCO2e\n"
+            f"Potentiel score: ~{proj:.0f}/100\n\n"
+            f"ANBEFALEDE TILTAG:\n" + "\n".join(lines) + "\n\n"
+            f"Hurtige gevinster: {', '.join(qw) if qw else 'Ingen'}\n\n"
+            f"Skriv struktureret med 500-600 ord:\n\n"
+            f"**Klimatiltag med SMART-mål:**\n"
+            f"For de 2 vigtigste miljøtiltag — hvert med:\n"
+            f"- SMART-mål (Specifikt, Målbart, Opnåeligt, Relevant, Tidsbestemt)\n"
+            f"- 3-4 konkrete handlingstrin\n"
+            f"- Forventet CO2-reduktion og tidsplan\n\n"
+            f"**Sociale forbedringer:**\n"
+            f"- SMART-mål + handlingstrin + KPI'er\n\n"
+            f"**Ledelsesmæssige forbedringer:**\n"
+            f"- SMART-mål + handlingstrin + KPI'er\n\n"
+            f"**Hurtige gevinster (inden for 30 dage):**\n"
+            f"- Konkrete handlinger og forventet effekt\n\n"
+            f"**12-måneders handlingsplan:**\n"
+            f"- Kvartal 1, 2, 3, 4: specifikke handlinger\n\n"
+            f"Afslut med ansvarsfraskrivelse."
+        )
+        return await self.llm.generate(_SYSTEM_PROMPT, prompt, max_tokens=900)
 
     async def write_roadmap_narrative(
         self,
@@ -163,36 +212,25 @@ End with the mandatory disclaimer."""
         score: ESGScore,
         gaps: GapReport,
     ) -> str:
-        def _quarter_titles(q: str) -> list[str]:
+        def qt(q: str) -> list:
             return [a.title for a in gaps.roadmap_by_quarter.get(q, [])]
 
-        projected_score = min(score.total + gaps.total_potential_score_gain, 100.0)
+        proj = min(score.total + gaps.total_potential_score_gain, 100.0)
 
-        prompt = f"""Write the 12-Month ESG Improvement Roadmap for **{company_name}**.
-
-=== CURRENT STATE ===
-ESG Score: {score.total}/100 (Rating: {score.rating})
-Projected Score (all actions complete): ~{projected_score:.0f}/100
-
-=== RECOMMENDED ACTIONS BY QUARTER ===
-Q1 (Months 1–3 — Foundation): {', '.join(_quarter_titles('Q1')) or 'No actions'}
-Q2 (Months 4–6 — Structure): {', '.join(_quarter_titles('Q2')) or 'No actions'}
-Q3 (Months 7–9 — Deepen): {', '.join(_quarter_titles('Q3')) or 'No actions'}
-Q4 (Months 10–12 — Verify): {', '.join(_quarter_titles('Q4')) or 'No actions'}
-
-QUICK WINS (low effort, high impact):
-{', '.join(a.title for a in gaps.quick_wins) or 'None identified'}
-
-=== FORMAT ===
-Write 5 paragraphs (420–500 words total):
-1. Q1 — Focus and rationale (why these actions first)
-2. Q2 — Building on Q1 foundations
-3. Q3 — Deepening commitments
-4. Q4 — Measurement and verification
-5. CSRD Readiness — what this roadmap achieves toward future CSRD obligations \
-(note: this report is NOT CSRD certification)
-
-Be practical and specific. Name the actual actions.
-End with the mandatory disclaimer."""
-
+        prompt = (
+            f"Skriv '12-måneders ESG-forbedringsplan' for **{company_name}**.\n\n"
+            f"Score: {score.total}/100 ({score.rating}) → projiceret: ~{proj:.0f}/100\n"
+            f"Kvartal 1: {', '.join(qt('Q1')) or 'Ingen'}\n"
+            f"Kvartal 2: {', '.join(qt('Q2')) or 'Ingen'}\n"
+            f"Kvartal 3: {', '.join(qt('Q3')) or 'Ingen'}\n"
+            f"Kvartal 4: {', '.join(qt('Q4')) or 'Ingen'}\n"
+            f"Hurtige gevinster: {', '.join(a.title for a in gaps.quick_wins) or 'Ingen'}\n\n"
+            f"Skriv 5 afsnit (400-480 ord):\n"
+            f"1. Kvartal 1 — fokus og begrundelse\n"
+            f"2. Kvartal 2 — bygger videre på Q1\n"
+            f"3. Kvartal 3 — uddybning\n"
+            f"4. Kvartal 4 — måling og verifikation\n"
+            f"5. Fremtidsperspektiv\n\n"
+            f"Afslut med ansvarsfraskrivelse."
+        )
         return await self.llm.generate(_SYSTEM_PROMPT, prompt, max_tokens=700)

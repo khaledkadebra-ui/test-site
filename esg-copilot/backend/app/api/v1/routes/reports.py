@@ -169,6 +169,7 @@ async def get_report(report_id: UUID, current_user: CurrentUser, db: DB):
         executive_summary=r.executive_summary or "",
         co2_narrative=r.co2_narrative or "",
         esg_narrative=r.esg_narrative or "",
+        improvements_narrative=r.improvements_narrative or "",
         roadmap_narrative=r.roadmap_narrative or "",
         pdf_url=report.pdf_url,
         completed_at=report.completed_at.isoformat() if report.completed_at else None,
@@ -249,6 +250,8 @@ async def _run_report_pipeline(report_id: str, submission_id: str):
                     selectinload(DataSubmission.travel_data),
                     selectinload(DataSubmission.procurement_data),
                     selectinload(DataSubmission.policy_data),
+                    selectinload(DataSubmission.workforce_data),
+                    selectinload(DataSubmission.environment_data),
                     selectinload(DataSubmission.company),
                 )
                 .where(DataSubmission.id == UUID(submission_id))
@@ -261,7 +264,11 @@ async def _run_report_pipeline(report_id: str, submission_id: str):
             td = sub.travel_data
             pd = sub.procurement_data
             pol = sub.policy_data
+            wf = sub.workforce_data
+            env = sub.environment_data
             company = sub.company
+            revenue_dkk = float(company.revenue_eur or 0) * 7.46  # EUR → DKK
+            employee_count = company.employee_count or 0
 
             # ── 1. CO2 Calculation ───────────────────────────────────────────
             calc = CO2Calculator()
@@ -335,9 +342,22 @@ async def _run_report_pipeline(report_id: str, submission_id: str):
 
             # ── 4. AI Narratives ─────────────────────────────────────────────
             writer = ReportWriter()
-            exec_summary = await writer.write_executive_summary(company.name, sub.reporting_year, co2, score, gaps)
-            co2_narrative = await writer.write_co2_narrative(company.name, sub.reporting_year, co2, company.industry_code)
-            esg_narrative = await writer.write_esg_narrative(company.name, score)
+            wf_dict = None
+            if wf:
+                wf_dict = {c.name: getattr(wf, c.name) for c in wf.__table__.columns
+                           if c.name not in ("id", "submission_id", "created_at", "updated_at")}
+
+            exec_summary = await writer.write_executive_summary(
+                company.name, sub.reporting_year, co2, score, gaps,
+                revenue_dkk=revenue_dkk, employee_count=employee_count,
+            )
+            co2_narrative = await writer.write_co2_narrative(
+                company.name, sub.reporting_year, co2, company.industry_code,
+                country_code=company.country_code,
+                revenue_dkk=revenue_dkk, employee_count=employee_count,
+            )
+            esg_narrative = await writer.write_esg_narrative(company.name, score, workforce_data=wf_dict)
+            improvements_narrative = await writer.write_improvements(company.name, score, gaps, co2)
             roadmap_narrative = await writer.write_roadmap_narrative(company.name, score, gaps)
 
             identified_gaps = score.environmental.gaps + score.social.gaps + score.governance.gaps
@@ -373,6 +393,7 @@ async def _run_report_pipeline(report_id: str, submission_id: str):
                     executive_summary=exec_summary,
                     co2_narrative=co2_narrative,
                     esg_narrative=esg_narrative,
+                    improvements_narrative=improvements_narrative,
                     roadmap_narrative=roadmap_narrative,
                     disclaimer=report.disclaimer,
                 )
@@ -413,6 +434,7 @@ async def _run_report_pipeline(report_id: str, submission_id: str):
                 executive_summary=exec_summary,
                 co2_narrative=co2_narrative,
                 esg_narrative=esg_narrative,
+                improvements_narrative=improvements_narrative,
                 roadmap_narrative=roadmap_narrative,
                 ai_model_used=settings.OPENAI_MODEL,
                 calculation_engine_version=settings.CALCULATION_ENGINE_VERSION,

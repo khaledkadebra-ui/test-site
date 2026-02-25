@@ -24,10 +24,12 @@ from app.models.audit_log import AuditLog
 from app.models.company import Company
 from app.models.submission import (
     DataSubmission, EnergyData, TravelData, ProcurementData, ESGPolicyData,
+    VSMEWorkforceData, VSMEEnvironmentData,
 )
 from app.schemas.submission import (
     EnergyDataInput, TravelDataInput, ProcurementDataInput,
     PolicyDataInput, CompletenessCheck, SubmissionFull,
+    VSMEWorkforceDataIn, VSMEEnvironmentDataIn,
 )
 
 router = APIRouter()
@@ -157,6 +159,58 @@ async def save_policies(submission_id: UUID, body: PolicyDataInput, current_user
         action="data.updated", entity_type="policy_data", entity_id=sub.id,
     ))
     return {"message": "Policy data saved"}
+
+
+# ── PATCH /submissions/{id}/workforce ────────────────────────────────────────
+
+@router.patch("/{submission_id}/workforce", status_code=status.HTTP_200_OK)
+async def save_workforce(submission_id: UUID, body: VSMEWorkforceDataIn, current_user: CurrentUser, db: DB):
+    """Save VSME B8-B10: Medarbejdere, arbejdsmiljø og løn."""
+    sub = await _load_submission(db, submission_id)
+    _assert_access(current_user, sub.company_id)
+    _assert_editable(sub)
+
+    if sub.workforce_data:
+        wf = sub.workforce_data
+    else:
+        wf = VSMEWorkforceData(submission_id=sub.id)
+        db.add(wf)
+
+    for field, value in body.model_dump(exclude_unset=False).items():
+        if hasattr(wf, field) and value is not None:
+            setattr(wf, field, value)
+
+    db.add(AuditLog(
+        user_id=current_user.id, company_id=sub.company_id,
+        action="data.updated", entity_type="vsme_workforce_data", entity_id=sub.id,
+    ))
+    return {"message": "Medarbejderdata gemt (B8-B10)"}
+
+
+# ── PATCH /submissions/{id}/environment ──────────────────────────────────────
+
+@router.patch("/{submission_id}/environment", status_code=status.HTTP_200_OK)
+async def save_environment(submission_id: UUID, body: VSMEEnvironmentDataIn, current_user: CurrentUser, db: DB):
+    """Save VSME B4-B7: Forurening, biodiversitet, vand og affald."""
+    sub = await _load_submission(db, submission_id)
+    _assert_access(current_user, sub.company_id)
+    _assert_editable(sub)
+
+    if sub.environment_data:
+        env = sub.environment_data
+    else:
+        env = VSMEEnvironmentData(submission_id=sub.id)
+        db.add(env)
+
+    for field, value in body.model_dump(exclude_unset=False).items():
+        if hasattr(env, field):
+            setattr(env, field, value)
+
+    db.add(AuditLog(
+        user_id=current_user.id, company_id=sub.company_id,
+        action="data.updated", entity_type="vsme_environment_data", entity_id=sub.id,
+    ))
+    return {"message": "Miljødata gemt (B4-B7)"}
 
 
 # ── POST /submissions/{id}/submit ─────────────────────────────────────────────
@@ -409,6 +463,8 @@ async def _load_submission(db, submission_id: UUID) -> DataSubmission:
             selectinload(DataSubmission.travel_data),
             selectinload(DataSubmission.procurement_data),
             selectinload(DataSubmission.policy_data),
+            selectinload(DataSubmission.workforce_data),
+            selectinload(DataSubmission.environment_data),
         )
         .where(DataSubmission.id == submission_id)
     )
