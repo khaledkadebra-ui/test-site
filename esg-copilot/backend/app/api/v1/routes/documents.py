@@ -27,6 +27,32 @@ except ImportError:
 router = APIRouter()
 
 
+@router.get("", summary="List all documents for the current user's company")
+async def list_documents(current_user: CurrentUser, db: DB):
+    """Returns all uploaded documents for the authenticated user's company, newest first."""
+    if not current_user.company_id:
+        return []
+    result = await db.execute(
+        select(AuditLog).where(
+            AuditLog.company_id == current_user.company_id,
+            AuditLog.action == "document.uploaded",
+        ).order_by(AuditLog.created_at.desc())
+    )
+    logs = result.scalars().all()
+    docs = []
+    for log in logs:
+        v = log.new_value or {}
+        docs.append({
+            "id": str(log.entity_id),
+            "filename": v.get("filename", "unknown"),
+            "file_type": v.get("filename", "").rsplit(".", 1)[-1].lower() if "." in v.get("filename", "") else "unknown",
+            "size_bytes": v.get("size_bytes", 0),
+            "submission_id": v.get("submission_id"),
+            "created_at": log.created_at.isoformat(),
+        })
+    return docs
+
+
 @router.post("/upload", status_code=status.HTTP_201_CREATED)
 async def upload_document(
     current_user: CurrentUser,

@@ -109,6 +109,36 @@ async def generate_report(
     }
 
 
+@router.get("", summary="List all reports for the current user's company")
+async def list_reports(current_user: CurrentUser, db: DB):
+    """Returns all reports for the authenticated user's company, newest first."""
+    if not current_user.company_id:
+        return []
+    result = await db.execute(
+        select(Report)
+        .options(selectinload(Report.results))
+        .where(Report.company_id == current_user.company_id)
+        .order_by(Report.created_at.desc())
+    )
+    reports = result.scalars().all()
+    out = []
+    for report in reports:
+        r = report.results
+        out.append({
+            "report_id": str(report.id),
+            "submission_id": str(report.submission_id),
+            "status": report.status,
+            "version": report.version,
+            "created_at": report.created_at.isoformat(),
+            "completed_at": report.completed_at.isoformat() if report.completed_at else None,
+            "pdf_ready": report.pdf_url is not None,
+            "esg_score_total": float(r.esg_score_total or 0) if r else None,
+            "esg_rating": r.esg_rating if r else None,
+            "total_co2e_tonnes": float(r.total_co2e_kg or 0) / 1000 if r else None,
+        })
+    return out
+
+
 @router.get("/{report_id}/status", response_model=ReportStatusOut)
 async def get_report_status(report_id: UUID, current_user: CurrentUser, db: DB):
     report = await _get_report_or_404(db, report_id)

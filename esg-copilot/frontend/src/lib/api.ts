@@ -129,6 +129,11 @@ export async function submitSubmission(submissionId: string) {
 
 // ── Reports ───────────────────────────────────────────────────────────────────
 
+export async function listReports() {
+  const { data } = await api.get("/reports")
+  return data
+}
+
 export async function generateReport(submissionId: string, includeAI = true) {
   const { data } = await api.post("/reports/generate", {
     submission_id: submissionId,
