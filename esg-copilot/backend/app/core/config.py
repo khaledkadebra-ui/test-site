@@ -18,6 +18,16 @@ class Settings(BaseSettings):
     # ── Database ─────────────────────────────────────────────────────────────
     DATABASE_URL: str = "postgresql+asyncpg://postgres:postgres@localhost:5432/esg_copilot"
 
+    @property
+    def async_database_url(self) -> str:
+        """Ensure the URL uses the asyncpg driver (Neon/Render provide plain postgresql://)."""
+        url = self.DATABASE_URL
+        if url.startswith("postgresql://"):
+            url = url.replace("postgresql://", "postgresql+asyncpg://", 1)
+        elif url.startswith("postgres://"):
+            url = url.replace("postgres://", "postgresql+asyncpg://", 1)
+        return url
+
     # ── Redis (Celery task queue) ─────────────────────────────────────────────
     REDIS_URL: str = "redis://localhost:6379/0"
 

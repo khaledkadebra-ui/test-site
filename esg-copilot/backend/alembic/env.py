@@ -23,6 +23,12 @@ db_url = os.environ.get(
     "DATABASE_URL",
     "postgresql+asyncpg://postgres:postgres@localhost:5432/esg_copilot",
 )
+# Normalize URL: Neon/Render provide plain postgresql:// or postgres:// — asyncpg needs +asyncpg
+if db_url.startswith("postgres://"):
+    db_url = db_url.replace("postgres://", "postgresql+asyncpg://", 1)
+elif db_url.startswith("postgresql://") and "+asyncpg" not in db_url:
+    db_url = db_url.replace("postgresql://", "postgresql+asyncpg://", 1)
+
 # Alembic needs a sync URL for some operations — swap asyncpg → psycopg2 for offline mode
 config.set_main_option("sqlalchemy.url", db_url)
 

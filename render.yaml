@@ -1,0 +1,38 @@
+services:
+  - type: web
+    name: esg-copilot-api
+    runtime: docker
+    rootDir: esg-copilot/backend
+    dockerfilePath: Dockerfile
+    plan: free
+    healthCheckPath: /api/v1/health
+    envVars:
+      # Set these manually in Render dashboard after deploy:
+      - key: DATABASE_URL
+        sync: false           # paste your Neon PostgreSQL URL here
+      - key: REDIS_URL
+        sync: false           # leave blank or add Upstash Redis URL
+      - key: SECRET_KEY
+        generateValue: true   # auto-generated secure key
+      - key: ENVIRONMENT
+        value: production
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: FRONTEND_URL
+        value: https://esg-copilot-app.vercel.app
+      - key: ALLOWED_ORIGINS
+        value: '["https://esg-copilot-app.vercel.app","http://localhost:3000"]'
+      # Stripe (optional — leave blank to disable billing)
+      - key: STRIPE_SECRET_KEY
+        sync: false
+      - key: STRIPE_WEBHOOK_SECRET
+        sync: false
+      - key: STRIPE_PRICE_STARTER
+        sync: false
+      - key: STRIPE_PRICE_PRO
+        sync: false
+      # Resend email (optional — leave blank to skip emails)
+      - key: RESEND_API_KEY
+        sync: false
+      - key: EMAIL_FROM
+        value: ESG Copilot <noreply@esg-copilot.com>
