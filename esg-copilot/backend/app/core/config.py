@@ -44,7 +44,7 @@ class Settings(BaseSettings):
     AWS_REGION: str = "eu-west-1"            # EU region for GDPR compliance
 
     # ── CORS ─────────────────────────────────────────────────────────────────
-    ALLOWED_ORIGINS: List[str] = ["http://localhost:3000"]
+    ALLOWED_ORIGINS: List[str] = ["*"]
 
     # ── Stripe Payments ───────────────────────────────────────────────────────
     STRIPE_SECRET_KEY: str = ""
