@@ -31,9 +31,9 @@ class Settings(BaseSettings):
     # ── Redis (Celery task queue) ─────────────────────────────────────────────
     REDIS_URL: str = "redis://localhost:6379/0"
 
-    # ── OpenAI ───────────────────────────────────────────────────────────────
-    OPENAI_API_KEY: str = ""
-    OPENAI_MODEL: str = "gpt-4o"
+    # ── Anthropic Claude ──────────────────────────────────────────────────────
+    ANTHROPIC_API_KEY: str = ""
+    ANTHROPIC_MODEL: str = "claude-sonnet-4-6"
 
     # ── File Storage ─────────────────────────────────────────────────────────
     STORAGE_BACKEND: str = "local"           # local | s3 | r2

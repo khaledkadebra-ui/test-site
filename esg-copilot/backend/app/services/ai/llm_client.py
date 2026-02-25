@@ -1,7 +1,7 @@
 """
 LLM Client — ESG Copilot
 ==========================
-Thin wrapper around OpenAI API for narrative generation only.
+Thin wrapper around Anthropic Claude API for narrative generation only.
 
 Rules:
 - Temperature kept at 0.3 for consistent, factual output
@@ -13,7 +13,7 @@ import os
 import logging
 from typing import Optional
 
-from openai import AsyncOpenAI, RateLimitError, APITimeoutError, APIConnectionError
+import anthropic
 
 logger = logging.getLogger(__name__)
 
@@ -23,7 +23,7 @@ RETRY_DELAY_SECONDS = 2
 
 class LLMClient:
     """
-    OpenAI API wrapper for structured narrative generation.
+    Anthropic Claude API wrapper for structured narrative generation.
 
     Usage:
         client = LLMClient()
@@ -31,8 +31,11 @@ class LLMClient:
     """
 
     def __init__(self):
-        self.client = AsyncOpenAI(api_key=os.environ["OPENAI_API_KEY"])
-        self.model = os.environ.get("OPENAI_MODEL", "gpt-4o")
+        api_key = os.environ.get("ANTHROPIC_API_KEY", "")
+        if not api_key:
+            raise RuntimeError("ANTHROPIC_API_KEY environment variable is not set")
+        self.client = anthropic.AsyncAnthropic(api_key=api_key)
+        self.model = os.environ.get("ANTHROPIC_MODEL", "claude-sonnet-4-6")
         self.temperature = 0.3       # Low = more deterministic, less hallucination
         self.default_max_tokens = 2000
 
@@ -51,24 +54,24 @@ class LLMClient:
         last_error = None
         for attempt in range(1, MAX_RETRIES + 1):
             try:
-                response = await self.client.chat.completions.create(
+                response = await self.client.messages.create(
                     model=self.model,
                     temperature=self.temperature,
                     max_tokens=max_tokens or self.default_max_tokens,
+                    system=system_prompt,
                     messages=[
-                        {"role": "system", "content": system_prompt},
                         {"role": "user", "content": user_prompt},
                     ],
                 )
-                return response.choices[0].message.content or ""
+                return response.content[0].text if response.content else ""
 
-            except RateLimitError as e:
-                logger.warning("OpenAI rate limit hit (attempt %d/%d). Waiting %ds.", attempt, MAX_RETRIES, RETRY_DELAY_SECONDS * attempt)
+            except anthropic.RateLimitError as e:
+                logger.warning("Anthropic rate limit hit (attempt %d/%d). Waiting %ds.", attempt, MAX_RETRIES, RETRY_DELAY_SECONDS * attempt)
                 last_error = e
                 await asyncio.sleep(RETRY_DELAY_SECONDS * attempt)
 
-            except (APITimeoutError, APIConnectionError) as e:
-                logger.warning("OpenAI transient error (attempt %d/%d): %s", attempt, MAX_RETRIES, e)
+            except (anthropic.APITimeoutError, anthropic.APIConnectionError) as e:
+                logger.warning("Anthropic transient error (attempt %d/%d): %s", attempt, MAX_RETRIES, e)
                 last_error = e
                 await asyncio.sleep(RETRY_DELAY_SECONDS)
 
