@@ -1,7 +1,7 @@
 "use client"
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
-import { getMe, getCompany, listSubmissions, getReport } from "@/lib/api"
+import { getMe, getCompany, listSubmissions, listReports, getReport } from "@/lib/api"
 import Sidebar from "@/components/Sidebar"
 import { TrendingUp, CheckCircle, XCircle, AlertCircle } from "lucide-react"
 
@@ -39,11 +39,11 @@ export default function GoalsPage() {
       const c = await getCompany(me.company_id)
       setMeta(m => ({ ...m, companyName: c.name }))
       const subs = await listSubmissions(me.company_id)
-      if (!subs.length) { setLoading(false); return }
-      const latest = subs[0]
-      setSubmission(latest)
-      if (latest.status === "processed") {
-        const r = await getReport(latest.id).catch(() => null)
+      if (subs.length) setSubmission(subs[0])
+      const reports = await listReports()
+      const completed = reports.filter((rep: { status: string }) => rep.status === "completed")
+      if (completed.length) {
+        const r = await getReport(completed[0].report_id).catch(() => null)
         if (r) setReport(r)
       }
     } catch { router.push("/login") }

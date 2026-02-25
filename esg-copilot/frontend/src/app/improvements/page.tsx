@@ -1,7 +1,7 @@
 "use client"
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
-import { getMe, getCompany, listSubmissions, getReport } from "@/lib/api"
+import { getMe, getCompany, listReports, getReport } from "@/lib/api"
 import Sidebar from "@/components/Sidebar"
 import { Target, AlertCircle, Zap } from "lucide-react"
 
@@ -32,10 +32,10 @@ export default function ImprovementsPage() {
       if (!me.company_id) { setLoading(false); return }
       const c = await getCompany(me.company_id)
       setMeta(m => ({ ...m, companyName: c.name }))
-      const subs = await listSubmissions(me.company_id)
-      const processed = subs.filter((s: { status: string }) => s.status === "processed")
-      if (!processed.length) { setLoading(false); return }
-      const r = await getReport(processed[0].id).catch(() => null)
+      const reports = await listReports()
+      const completed = reports.filter((rep: { status: string }) => rep.status === "completed")
+      if (!completed.length) { setLoading(false); return }
+      const r = await getReport(completed[0].report_id).catch(() => null)
       if (r) setReport(r as typeof report)
     } catch { router.push("/login") }
     finally { setLoading(false) }

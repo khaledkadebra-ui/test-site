@@ -1,7 +1,7 @@
 "use client"
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
-import { getMe, getCompany, listSubmissions, getReport } from "@/lib/api"
+import { getMe, getCompany, listReports, getReport } from "@/lib/api"
 import Sidebar from "@/components/Sidebar"
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid } from "recharts"
 import { Wind, AlertCircle } from "lucide-react"
@@ -38,12 +38,10 @@ export default function CO2Page() {
       if (!me.company_id) { setNoReport(true); setLoading(false); return }
       const c = await getCompany(me.company_id)
       setCompanyName(c.name)
-      const subs = await listSubmissions(me.company_id)
-      const processed = subs.filter((s: { status: string; id: string }) => s.status === "processed")
-      if (!processed.length) { setNoReport(true); setLoading(false); return }
-      // Find latest report for most recent processed submission
-      const latest = processed[0]
-      const r = await getReport(latest.id).catch(() => null)
+      const reports = await listReports()
+      const completed = reports.filter((rep: { status: string }) => rep.status === "completed")
+      if (!completed.length) { setNoReport(true); setLoading(false); return }
+      const r = await getReport(completed[0].report_id).catch(() => null)
       if (r) setReport(r)
       else setNoReport(true)
     } catch { router.push("/login") }
