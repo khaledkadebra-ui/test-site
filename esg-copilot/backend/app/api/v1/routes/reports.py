@@ -347,18 +347,43 @@ async def _run_report_pipeline(report_id: str, submission_id: str):
                 wf_dict = {c.name: getattr(wf, c.name) for c in wf.__table__.columns
                            if c.name not in ("id", "submission_id", "created_at", "updated_at")}
 
-            exec_summary = await writer.write_executive_summary(
-                company.name, sub.reporting_year, co2, score, gaps,
-                revenue_dkk=revenue_dkk, employee_count=employee_count,
+            async def safe_generate(coro, fallback: str) -> str:
+                try:
+                    return await coro
+                except Exception as ai_err:
+                    logger.warning("AI narrative failed (using fallback): %s", ai_err)
+                    return fallback
+
+            exec_summary = await safe_generate(
+                writer.write_executive_summary(
+                    company.name, sub.reporting_year, co2, score, gaps,
+                    revenue_dkk=revenue_dkk, employee_count=employee_count,
+                ),
+                f"{company.name} har gennemført sin VSME-bæredygtighedsrapportering for {sub.reporting_year}. "
+                f"ESG-score: {score.total:.1f}/100 (Rating {score.rating}). "
+                f"Samlet CO₂-aftryk: {co2.total_tonnes:.1f} tCO₂e.",
             )
-            co2_narrative = await writer.write_co2_narrative(
-                company.name, sub.reporting_year, co2, company.industry_code,
-                country_code=company.country_code,
-                revenue_dkk=revenue_dkk, employee_count=employee_count,
+            co2_narrative = await safe_generate(
+                writer.write_co2_narrative(
+                    company.name, sub.reporting_year, co2, company.industry_code,
+                    country_code=company.country_code,
+                    revenue_dkk=revenue_dkk, employee_count=employee_count,
+                ),
+                f"Samlet CO₂-aftryk: {co2.total_tonnes:.2f} tCO₂e "
+                f"(Scope 1: {co2.scope1_tonnes:.2f} t, Scope 2: {co2.scope2_tonnes:.2f} t, Scope 3: {co2.scope3_tonnes:.2f} t).",
             )
-            esg_narrative = await writer.write_esg_narrative(company.name, score, workforce_data=wf_dict)
-            improvements_narrative = await writer.write_improvements(company.name, score, gaps, co2)
-            roadmap_narrative = await writer.write_roadmap_narrative(company.name, score, gaps)
+            esg_narrative = await safe_generate(
+                writer.write_esg_narrative(company.name, score, workforce_data=wf_dict),
+                f"ESG-score: E={score.environmental.score:.1f}, S={score.social.score:.1f}, G={score.governance.score:.1f}.",
+            )
+            improvements_narrative = await safe_generate(
+                writer.write_improvements(company.name, score, gaps, co2),
+                "Se identificerede mangler og handlingsplan nedenfor for konkrete forbedringsforslag.",
+            )
+            roadmap_narrative = await safe_generate(
+                writer.write_roadmap_narrative(company.name, score, gaps),
+                "Implementer anbefalingerne kvartalsvis for at forbedre ESG-scoren over de næste 12 måneder.",
+            )
 
             identified_gaps = score.environmental.gaps + score.social.gaps + score.governance.gaps
             recommendations = gaps.to_dict()["actions"]
