@@ -17,8 +17,8 @@ import anthropic
 
 logger = logging.getLogger(__name__)
 
-MAX_RETRIES = 3
-RETRY_DELAY_SECONDS = 2
+MAX_RETRIES = 5
+RETRY_DELAY_SECONDS = 3
 
 
 class LLMClient:
@@ -67,6 +67,12 @@ class LLMClient:
 
             except anthropic.RateLimitError as e:
                 logger.warning("Anthropic rate limit hit (attempt %d/%d). Waiting %ds.", attempt, MAX_RETRIES, RETRY_DELAY_SECONDS * attempt)
+                last_error = e
+                await asyncio.sleep(RETRY_DELAY_SECONDS * attempt)
+
+            except anthropic.InternalServerError as e:
+                # 529 Overloaded — always retry with backoff
+                logger.warning("Anthropic overloaded (attempt %d/%d). Waiting %ds.", attempt, MAX_RETRIES, RETRY_DELAY_SECONDS * attempt)
                 last_error = e
                 await asyncio.sleep(RETRY_DELAY_SECONDS * attempt)
 
