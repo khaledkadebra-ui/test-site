@@ -8,19 +8,11 @@
  */
 import {
   Document, Page, Text, View, StyleSheet, Svg, Circle, Rect, G,
-  Font,
 } from "@react-pdf/renderer"
 
-// ── Register font ─────────────────────────────────────────────────────────────
-Font.register({
-  family: "Inter",
-  fonts: [
-    { src: "https://fonts.gstatic.com/s/inter/v13/UcCO3FwrK3iLTeHuS_fvQtMwCp50KnMw2boKoduKmMEVuLyfAZ9hiJ-Ek-_EeA.woff", fontWeight: 400 },
-    { src: "https://fonts.gstatic.com/s/inter/v13/UcCO3FwrK3iLTeHuS_fvQtMwCp50KnMw2boKoduKmMEVuI6fAZ9hiJ-Ek-_EeA.woff", fontWeight: 600 },
-    { src: "https://fonts.gstatic.com/s/inter/v13/UcCO3FwrK3iLTeHuS_fvQtMwCp50KnMw2boKoduKmMEVuFuYAZ9hiJ-Ek-_EeA.woff", fontWeight: 700 },
-    { src: "https://fonts.gstatic.com/s/inter/v13/UcCO3FwrK3iLTeHuS_fvQtMwCp50KnMw2boKoduKmMEVuDyYAZ9hiJ-Ek-_EeA.woff", fontWeight: 800 },
-  ],
-})
+// No custom font registration — use built-in Helvetica so PDF generation
+// works without any network requests. react-pdf maps fontWeight: 700 →
+// Helvetica-Bold automatically for all built-in fonts.
 
 // ── Design tokens ─────────────────────────────────────────────────────────────
 const C = {
@@ -60,10 +52,10 @@ const PRIO_COLOR: Record<string, string> = { high: C.red, medium: C.amber, low: 
 
 // ── Styles ────────────────────────────────────────────────────────────────────
 const s = StyleSheet.create({
-  page: { fontFamily: "Inter", fontSize: 9, color: C.gray700, backgroundColor: C.white, paddingTop: 0, paddingBottom: 48 },
+  page: { fontFamily: "Helvetica", fontSize: 9, color: C.gray700, backgroundColor: C.white, paddingTop: 0, paddingBottom: 48 },
 
   // Cover
-  coverPage: { fontFamily: "Inter", backgroundColor: C.sidebar, padding: 0 },
+  coverPage: { fontFamily: "Helvetica", backgroundColor: C.sidebar, padding: 0 },
   coverTop:  { backgroundColor: C.sidebar, flex: 1, padding: 56, justifyContent: "space-between" },
   coverBrand:{ fontSize: 10, fontWeight: 600, color: C.green, letterSpacing: 1.5, textTransform: "uppercase" as const, marginBottom: 8 },
   coverTitle:{ fontSize: 32, fontWeight: 800, color: C.white, lineHeight: 1.2, marginBottom: 8 },
