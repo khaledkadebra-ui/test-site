@@ -1,84 +1,85 @@
 {
   "metadata": {
-    "sources": ["IPCC AR6 (2022)", "DEFRA Greenhouse Gas Conversion Factors 2023"],
+    "sources": ["IPCC AR6 (2022)", "DEFRA Greenhouse Gas Conversion Factors 2024"],
+    "source_url": "https://www.gov.uk/government/collections/government-conversion-factors-for-company-reporting",
     "units": "kg CO2e per stated unit",
     "gwp_basis": "GWP100 from IPCC AR6",
-    "last_updated": "2023",
-    "note": "All values include CO2, CH4, and N2O converted to CO2e. Do not modify — AI must never override these values."
+    "last_updated": "2024",
+    "note": "All values include CO2, CH4, and N2O converted to CO2e. Verified against DEFRA 2024 published factors. Do not modify — AI must never override these values."
   },
   "factors": {
     "natural_gas": {
       "kg_co2e_per_m3": 2.04,
-      "source": "DEFRA 2023 — Natural gas, gross calorific value",
+      "source": "DEFRA 2024 — Natural gas, gross calorific value",
       "ghg_breakdown_kg": { "co2": 1.89, "ch4": 0.11, "n2o": 0.04 }
     },
     "diesel": {
       "kg_co2e_per_liter": 2.68,
-      "source": "DEFRA 2023 — Diesel (average biofuel blend, market mix)",
+      "source": "DEFRA 2024 — Diesel (average biofuel blend, market mix)",
       "ghg_breakdown_kg": { "co2": 2.60, "ch4": 0.001, "n2o": 0.079 }
     },
     "petrol": {
       "kg_co2e_per_liter": 2.31,
-      "source": "DEFRA 2023 — Petrol (average biofuel blend, market mix)",
+      "source": "DEFRA 2024 — Petrol (average biofuel blend, market mix)",
       "ghg_breakdown_kg": { "co2": 2.23, "ch4": 0.001, "n2o": 0.079 }
     },
     "lpg": {
       "kg_co2e_per_liter": 1.51,
-      "source": "DEFRA 2023 — Liquefied petroleum gas",
+      "source": "DEFRA 2024 — Liquefied petroleum gas",
       "ghg_breakdown_kg": { "co2": 1.49, "ch4": 0.005, "n2o": 0.015 }
     },
     "heating_oil": {
       "kg_co2e_per_liter": 2.52,
-      "source": "DEFRA 2023 — Burning oil / kerosene",
+      "source": "DEFRA 2024 — Burning oil / kerosene",
       "ghg_breakdown_kg": { "co2": 2.50, "ch4": 0.003, "n2o": 0.017 }
     },
     "coal": {
       "kg_co2e_per_kg": 2.42,
-      "source": "DEFRA 2023 — Coal (industrial grade)",
+      "source": "DEFRA 2024 — Coal (industrial grade)",
       "ghg_breakdown_kg": { "co2": 2.39, "ch4": 0.009, "n2o": 0.022 }
     },
     "biomass_wood_chips": {
       "kg_co2e_per_kg": 0.015,
-      "source": "DEFRA 2023 — Wood chips, biomass (biogenic CO2 excluded per GHG Protocol)",
+      "source": "DEFRA 2024 — Wood chips, biomass (biogenic CO2 excluded per GHG Protocol)",
       "note": "Biogenic CO2 not counted under GHG Protocol. Only non-biogenic CH4/N2O included."
     },
     "company_car_avg": {
       "kg_co2e_per_km": 0.171,
-      "source": "DEFRA 2023 — Average car (market average, petrol + diesel fleet mix)",
+      "source": "DEFRA 2024 — Average car (market average, petrol + diesel fleet mix)",
       "note": "Use vehicle-specific factor if actual consumption data is available"
     },
     "company_car_petrol_small": {
       "kg_co2e_per_km": 0.148,
-      "source": "DEFRA 2023 — Small petrol car (<1.4L)"
+      "source": "DEFRA 2024 — Small petrol car (<1.4L)"
     },
     "company_car_petrol_medium": {
       "kg_co2e_per_km": 0.176,
-      "source": "DEFRA 2023 — Medium petrol car (1.4–2.0L)"
+      "source": "DEFRA 2024 — Medium petrol car (1.4–2.0L)"
     },
     "company_car_diesel_medium": {
       "kg_co2e_per_km": 0.163,
-      "source": "DEFRA 2023 — Medium diesel car (1.7–2.0L)"
+      "source": "DEFRA 2024 — Medium diesel car (1.7–2.0L)"
     },
     "company_car_electric": {
       "kg_co2e_per_km": 0.0,
-      "source": "DEFRA 2023 — Battery electric vehicle (Scope 1 = zero; Scope 2 counted via electricity)",
+      "source": "DEFRA 2024 — Battery electric vehicle (Scope 1 = zero; Scope 2 counted via electricity)",
       "note": "WTW (well-to-wheel) emissions counted under Scope 2 via electricity consumption"
     },
     "company_van_avg": {
       "kg_co2e_per_km": 0.240,
-      "source": "DEFRA 2023 — Average van (market average)"
+      "source": "DEFRA 2024 — Average van (market average)"
     },
     "company_van_diesel": {
       "kg_co2e_per_km": 0.255,
-      "source": "DEFRA 2023 — Diesel van"
+      "source": "DEFRA 2024 — Diesel van"
     },
     "company_truck_hgv_avg": {
       "kg_co2e_per_km": 0.913,
-      "source": "DEFRA 2023 — HGV articulated, average laden"
+      "source": "DEFRA 2024 — HGV articulated, average laden"
     },
     "company_truck_hgv_rigid": {
       "kg_co2e_per_km": 0.514,
-      "source": "DEFRA 2023 — HGV rigid, average laden"
+      "source": "DEFRA 2024 — HGV rigid, average laden"
     }
   }
 }

@@ -8,7 +8,7 @@ import {
 } from "@/lib/api"
 import Sidebar from "@/components/Sidebar"
 import InvoiceUploadModal from "@/components/InvoiceUploadModal"
-import { Flame, Zap, Globe, ShoppingBag, Shield, BarChart2, CheckCircle, ChevronRight, Users, Leaf, SkipForward, Paperclip } from "lucide-react"
+import { Flame, Zap, Globe, ShoppingBag, Shield, BarChart2, CheckCircle, ChevronRight, Users, Leaf, SkipForward, Paperclip, AlertTriangle } from "lucide-react"
 
 const STEPS = [
   { label: "Scope 1",       icon: Flame,        vsme: "B3",     optional: false },
@@ -21,8 +21,8 @@ const STEPS = [
   { label: "Gennemgang",    icon: BarChart2,    vsme: "",       optional: false },
 ]
 
-function Field({ label, unit, value, onChange, hint }: {
-  label: string; unit?: string; value: string; onChange: (v: string) => void; hint?: string
+function Field({ label, unit, value, onChange, hint, warning }: {
+  label: string; unit?: string; value: string; onChange: (v: string) => void; hint?: string; warning?: string
 }) {
   return (
     <div>
@@ -31,7 +31,21 @@ function Field({ label, unit, value, onChange, hint }: {
         {unit && <span className="text-gray-400 font-normal ml-1">({unit})</span>}
       </label>
       {hint && <p className="text-xs text-gray-400 mb-1">{hint}</p>}
-      <input type="number" className="input" value={value} onChange={e => onChange(e.target.value)} min={0} step="any" placeholder="0" />
+      <input
+        type="number"
+        className={`input ${warning ? "border-amber-300 focus:border-amber-400 focus:ring-amber-100" : ""}`}
+        value={value}
+        onChange={e => onChange(e.target.value)}
+        min={0}
+        step="any"
+        placeholder="0"
+      />
+      {warning && (
+        <p className="flex items-center gap-1 text-xs text-amber-600 mt-1">
+          <AlertTriangle className="w-3 h-3 flex-shrink-0" />
+          {warning}
+        </p>
+      )}
     </div>
   )
 }
@@ -152,6 +166,25 @@ function SubmitPageInner() {
     has_board_esg_oversight: false, supply_chain_code_of_conduct: false,
     has_training_program: false,
   })
+
+  // ── Inline validation warnings (non-blocking advisories) ──
+  const warnElectricity = Number(scope2.electricity_kwh) > 10_000_000
+    ? "Usædvanligt højt elforbrug (>10 mio. kWh) — er dette korrekt?"
+    : undefined
+  const warnCommute = Number(travel.avg_commute_km_one_way) > 200
+    ? "Over 200 km pendlingsafstand — angiv enkeltrejse (én vej)"
+    : undefined
+  const warnGenderSplit =
+    Number(workforce.employees_total) > 0 &&
+    (Number(workforce.employees_male) + Number(workforce.employees_female)) > Number(workforce.employees_total) * 1.1
+      ? "Mænd + kvinder overstiger samlet medarbejderantal — kontrollér tallene"
+      : undefined
+  const warnRecycled = Number(environment.waste_recycled_pct) > 100
+    ? "Genanvendelsesprocent kan ikke overstige 100%"
+    : undefined
+  const warnMinWage = Number(workforce.min_wage_pct) > 100
+    ? "Procentsats kan ikke overstige 100%"
+    : undefined
 
   useEffect(() => { if (step === 7) loadReview() }, [step])
 
@@ -303,7 +336,7 @@ function SubmitPageInner() {
                     </div>
                   </button>
                   <div className="grid grid-cols-2 gap-4">
-                    <Field label="Elforbrug" unit="kWh" value={scope2.electricity_kwh} onChange={v => setScope2(s => ({ ...s, electricity_kwh: v }))} hint="Aflæst fra elregning — årstal" />
+                    <Field label="Elforbrug" unit="kWh" value={scope2.electricity_kwh} onChange={v => setScope2(s => ({ ...s, electricity_kwh: v }))} hint="Aflæst fra elregning — årstal" warning={warnElectricity} />
                     <Field label="Fjernvarme" unit="kWh" value={scope2.district_heating_kwh} onChange={v => setScope2(s => ({ ...s, district_heating_kwh: v }))} />
                     <Field label="Vedvarende el-andel" unit="%" value={scope2.renewable_electricity_pct} onChange={v => setScope2(s => ({ ...s, renewable_electricity_pct: v }))} hint="0% hvis ingen VE-certifikater (GO/GOs)" />
                   </div>
@@ -329,7 +362,7 @@ function SubmitPageInner() {
                   </div>
                   <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mt-4">Medarbejderpendling (Kat. 7)</h3>
                   <div className="grid grid-cols-2 gap-4">
-                    <Field label="Gns. pendlingsafstand (én vej)" unit="km" value={travel.avg_commute_km_one_way} onChange={v => setTravel(t => ({ ...t, avg_commute_km_one_way: v }))} hint="Gennemsnitlig afstand pr. medarbejder" />
+                    <Field label="Gns. pendlingsafstand (én vej)" unit="km" value={travel.avg_commute_km_one_way} onChange={v => setTravel(t => ({ ...t, avg_commute_km_one_way: v }))} hint="Gennemsnitlig afstand pr. medarbejder" warning={warnCommute} />
                     <Field label="Arbejdsdage pr. år" unit="dage" value={travel.commute_days_per_year} onChange={v => setTravel(t => ({ ...t, commute_days_per_year: v }))} />
                   </div>
                 </div>
@@ -366,6 +399,14 @@ function SubmitPageInner() {
                     <Field label="Medarbejdere i alt" unit="antal" value={workforce.employees_total} onChange={v => setWorkforce(w => ({ ...w, employees_total: v }))} />
                     <Field label="Mænd" unit="antal" value={workforce.employees_male} onChange={v => setWorkforce(w => ({ ...w, employees_male: v }))} />
                     <Field label="Kvinder" unit="antal" value={workforce.employees_female} onChange={v => setWorkforce(w => ({ ...w, employees_female: v }))} />
+                  </div>
+                  {warnGenderSplit && (
+                    <p className="flex items-center gap-1.5 text-xs text-amber-600 bg-amber-50 border border-amber-100 rounded-lg px-3 py-2">
+                      <AlertTriangle className="w-3 h-3 flex-shrink-0" />
+                      {warnGenderSplit}
+                    </p>
+                  )}
+                  <div className="grid grid-cols-2 gap-4">
                     <Field label="Faste ansatte" unit="antal" value={workforce.employees_permanent} onChange={v => setWorkforce(w => ({ ...w, employees_permanent: v }))} />
                     <Field label="Midlertidigt ansatte" unit="antal" value={workforce.employees_temporary} onChange={v => setWorkforce(w => ({ ...w, employees_temporary: v }))} />
                     <Field label="Fuldtidsansatte" unit="antal" value={workforce.employees_full_time} onChange={v => setWorkforce(w => ({ ...w, employees_full_time: v }))} />
@@ -379,7 +420,7 @@ function SubmitPageInner() {
                   </div>
                   <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mt-4">B10 — Løn, Overenskomst & Uddannelse</h3>
                   <div className="grid grid-cols-2 gap-4">
-                    <Field label="Lønninger over mindsteløn" unit="%" value={workforce.min_wage_pct} onChange={v => setWorkforce(w => ({ ...w, min_wage_pct: v }))} hint="Andel af medarbejdere med løn over minimumsgrænse" />
+                    <Field label="Lønninger over mindsteløn" unit="%" value={workforce.min_wage_pct} onChange={v => setWorkforce(w => ({ ...w, min_wage_pct: v }))} hint="Andel af medarbejdere med løn over minimumsgrænse" warning={warnMinWage} />
                     <Field label="Lønforskel (kønsbetinget)" unit="%" value={workforce.gender_pay_gap_pct} onChange={v => setWorkforce(w => ({ ...w, gender_pay_gap_pct: v }))} hint="Positiv = mænd tjener mere i gennemsnit" />
                     <Field label="Overenskomstdækning" unit="%" value={workforce.collective_bargaining_pct} onChange={v => setWorkforce(w => ({ ...w, collective_bargaining_pct: v }))} />
                     <Field label="Uddannelsestimer (total)" unit="timer" value={workforce.training_hours_total} onChange={v => setWorkforce(w => ({ ...w, training_hours_total: v }))} />
@@ -423,7 +464,7 @@ function SubmitPageInner() {
                   <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mt-4">B7 — Ressourcer & Affald</h3>
                   <div className="grid grid-cols-2 gap-4">
                     <Field label="Affald i alt" unit="ton" value={environment.waste_total_tonnes} onChange={v => setEnvironment(e => ({ ...e, waste_total_tonnes: v }))} />
-                    <Field label="Genanvendt andel" unit="%" value={environment.waste_recycled_pct} onChange={v => setEnvironment(e => ({ ...e, waste_recycled_pct: v }))} />
+                    <Field label="Genanvendt andel" unit="%" value={environment.waste_recycled_pct} onChange={v => setEnvironment(e => ({ ...e, waste_recycled_pct: v }))} warning={warnRecycled} />
                     <Field label="Farligt affald" unit="ton" value={environment.waste_hazardous_tonnes} onChange={v => setEnvironment(e => ({ ...e, waste_hazardous_tonnes: v }))} />
                   </div>
                 </div>

@@ -129,6 +129,7 @@ class CalculationReport:
             "scope2_breakdown": self.scope2_breakdown,
             "scope3_breakdown": self.scope3_breakdown,
             "warnings": self.warnings,
+            "factor_version": "DEFRA 2024 (Scope 1/3) / IEA 2024 (Scope 2) / Energistyrelsen 2024 (DK grid)",
         }
 
 

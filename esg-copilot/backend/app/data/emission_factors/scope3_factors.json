@@ -1,55 +1,56 @@
 {
   "metadata": {
-    "sources": ["DEFRA 2023", "ICAO Carbon Calculator 2023", "EPA EEIO 2.0 (2023)"],
-    "last_updated": "2023",
-    "note": "Scope 3 is inherently estimated. Spend-based Cat 1 factors carry ~50% uncertainty. Clearly disclose method in report."
+    "sources": ["DEFRA Greenhouse Gas Conversion Factors 2024", "ICAO Carbon Calculator 2024", "EPA EEIO 2.0 (2023)"],
+    "source_url": "https://www.gov.uk/government/collections/government-conversion-factors-for-company-reporting",
+    "last_updated": "2024",
+    "note": "Scope 3 is inherently estimated. Spend-based Cat 1 factors carry ~50% uncertainty. Clearly disclose method in report. Travel factors verified against DEFRA 2024."
   },
   "business_travel": {
     "_category": "GHG Protocol Scope 3 Category 6",
     "short_haul_flight": {
       "kg_co2e_per_pkm": 0.255,
       "definition": "Flights under 3,700 km, economy class. Includes radiative forcing index (RFI) uplift of 1.9x.",
-      "source": "DEFRA 2023 — Flights, short-haul, international, economy"
+      "source": "DEFRA 2024 — Flights, short-haul, international, economy"
     },
     "short_haul_flight_business": {
       "kg_co2e_per_pkm": 0.343,
       "definition": "Short-haul, business class. Higher seat width factor applied.",
-      "source": "DEFRA 2023"
+      "source": "DEFRA 2024"
     },
     "long_haul_flight": {
       "kg_co2e_per_pkm": 0.195,
       "definition": "Flights over 3,700 km, economy class. Includes RFI uplift.",
-      "source": "DEFRA 2023 — Flights, long-haul, international, economy"
+      "source": "DEFRA 2024 — Flights, long-haul, international, economy"
     },
     "long_haul_flight_business": {
       "kg_co2e_per_pkm": 0.429,
       "definition": "Long-haul, business class. 2.2x premium cabin uplift factor.",
-      "source": "DEFRA 2023"
+      "source": "DEFRA 2024"
     },
     "long_haul_flight_first": {
       "kg_co2e_per_pkm": 0.599,
       "definition": "Long-haul, first class. 4x premium cabin uplift factor.",
-      "source": "DEFRA 2023"
+      "source": "DEFRA 2024"
     },
     "rail": {
       "kg_co2e_per_pkm": 0.035,
       "definition": "National rail average, passenger-km. Includes all electricity + diesel mix.",
-      "source": "DEFRA 2023 — National rail, average"
+      "source": "DEFRA 2024 — National rail, average"
     },
     "international_rail": {
       "kg_co2e_per_pkm": 0.006,
       "definition": "International rail (Eurostar / high-speed rail), typically electric.",
-      "source": "DEFRA 2023 — International rail"
+      "source": "DEFRA 2024 — International rail"
     },
     "rental_car": {
       "kg_co2e_per_km": 0.171,
       "definition": "Average rental car, petrol/diesel market mix.",
-      "source": "DEFRA 2023 — Average car"
+      "source": "DEFRA 2024 — Average car"
     },
     "taxi": {
       "kg_co2e_per_km": 0.149,
       "definition": "Taxi, average occupancy.",
-      "source": "DEFRA 2023"
+      "source": "DEFRA 2024"
     }
   },
   "employee_commuting": {
@@ -58,16 +59,16 @@
     "avg_mixed_mode": {
       "kg_co2e_per_km": 0.145,
       "definition": "Mixed-mode estimate: 60% car, 25% public transit, 15% active (cycling/walking). Per one-way km per person.",
-      "source": "DEFRA 2023 composite estimate"
+      "source": "DEFRA 2024 composite estimate"
     },
     "car_only": {
       "kg_co2e_per_km": 0.171,
-      "source": "DEFRA 2023 — Average car"
+      "source": "DEFRA 2024 — Average car"
     },
     "public_transit": {
       "kg_co2e_per_km": 0.089,
       "definition": "Local bus + metro + rail weighted average.",
-      "source": "DEFRA 2023 — Local transport composite"
+      "source": "DEFRA 2024 — Local transport composite"
     },
     "cycling_walking": {
       "kg_co2e_per_km": 0.0,

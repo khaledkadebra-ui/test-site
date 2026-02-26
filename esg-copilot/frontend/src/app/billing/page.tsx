@@ -35,6 +35,7 @@ export default function BillingPage() {
   const [loading, setLoading] = useState(true)
   const [portalLoading, setPortalLoading] = useState(false)
   const [checkoutLoading, setCheckoutLoading] = useState<string | null>(null)
+  const [billingError, setBillingError] = useState("")
 
   useEffect(() => {
     const token = localStorage.getItem("token")
@@ -59,12 +60,13 @@ export default function BillingPage() {
 
   async function openPortal() {
     setPortalLoading(true)
+    setBillingError("")
     try {
       const { data } = await api.post("/billing/portal")
       window.location.href = data.portal_url
     } catch (err: unknown) {
       const e = err as { response?: { data?: { detail?: string } } }
-      alert(e?.response?.data?.detail || "Could not open billing portal. Please contact support.")
+      setBillingError(e?.response?.data?.detail || "Could not open billing portal. Please contact support.")
     } finally {
       setPortalLoading(false)
     }
@@ -72,12 +74,13 @@ export default function BillingPage() {
 
   async function checkout(plan: string) {
     setCheckoutLoading(plan)
+    setBillingError("")
     try {
       const { data } = await api.post("/billing/checkout", { plan })
       window.location.href = data.checkout_url
     } catch (err: unknown) {
       const e = err as { response?: { data?: { detail?: string } } }
-      alert(e?.response?.data?.detail || "Payment service unavailable. Please contact support.")
+      setBillingError(e?.response?.data?.detail || "Payment service unavailable. Please contact support.")
     } finally {
       setCheckoutLoading(null)
     }
@@ -102,6 +105,11 @@ export default function BillingPage() {
         </div>
 
         <div className="p-8 space-y-6 max-w-3xl">
+          {billingError && (
+            <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-3 text-red-700 text-sm">
+              {billingError}
+            </div>
+          )}
           {/* Current plan */}
           <div className="card">
             <div className="flex items-start justify-between">

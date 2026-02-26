@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
-import { getMe, getCompany, listSubmissions, listReports, getReport, createCompany, createSubmission } from "@/lib/api"
+import { getMe, getCompany, listSubmissions, listReports, getReport, createCompany, createSubmission, getCompleteness } from "@/lib/api"
 import api from "@/lib/api"
 import Sidebar from "@/components/Sidebar"
 import {
@@ -190,10 +190,13 @@ export default function DashboardPage() {
 
   const [showCompanyForm, setShowCompanyForm] = useState(false)
   const [companyForm, setCompanyForm] = useState({ name: "", industry_code: "technology", country_code: "DK", employee_count: 10, revenue_eur: 1000000 })
+  const [companyError, setCompanyError] = useState("")
   const [loading, setLoading] = useState(true)
   const [creating, setCreating] = useState(false)
   const [verifyBanner, setVerifyBanner] = useState(false)
   const [resendSent, setResendSent] = useState(false)
+  const [inProgressSubId, setInProgressSubId] = useState<string | null>(null)
+  const [inProgressCompletion, setInProgressCompletion] = useState<{ is_complete: boolean; completion_pct: number; blocking_issues: string[] } | null>(null)
 
   useEffect(() => {
     const token = localStorage.getItem("token")
@@ -223,6 +226,14 @@ export default function DashboardPage() {
           const detail = await getReport(completed[0].report_id).catch(() => null)
           if (detail) setLatestReport(detail as ReportDetail)
         }
+
+        // Load completeness for the most recent in-progress submission
+        const inProgress = subs.find((s: Submission) => s.status === "incomplete")
+        if (inProgress) {
+          setInProgressSubId(inProgress.id)
+          const comp = await getCompleteness(inProgress.id).catch(() => null)
+          if (comp) setInProgressCompletion(comp)
+        }
       } else {
         setShowCompanyForm(true)
       }
@@ -241,7 +252,7 @@ export default function DashboardPage() {
       setCompany(c)
       setShowCompanyForm(false)
     } catch {
-      alert("Failed to create company — check all fields")
+      setCompanyError("Oprettelse mislykkedes — kontrollér alle felter og prøv igen")
     } finally {
       setCreating(false)
     }
@@ -339,6 +350,9 @@ export default function DashboardPage() {
                     <input type="number" className="input" value={companyForm.revenue_eur} onChange={e => setCompanyForm(f => ({ ...f, revenue_eur: Number(e.target.value) }))} min={0} required />
                   </div>
                   <div className="col-span-2 pt-1">
+                    {companyError && (
+                      <div className="bg-red-50 border border-red-200 rounded-lg px-4 py-3 text-red-600 text-sm mb-3">{companyError}</div>
+                    )}
                     <button type="submit" className="btn-primary w-full py-3 text-base" disabled={creating}>
                       {creating ? "Gemmer…" : "Opret virksomhed →"}
                     </button>
@@ -586,6 +600,38 @@ export default function DashboardPage() {
                     </div>
                   </div>
                 </>
+              )}
+
+              {/* ── In-progress completion card ────────────────────── */}
+              {inProgressSubId && inProgressCompletion && (
+                <div className="bg-white rounded-2xl border p-6" style={{ borderColor: "var(--color-border)" }}>
+                  <div className="flex items-center justify-between mb-3">
+                    <h3 className="font-bold text-gray-900 text-sm">Færdiggør din VSME-rapport</h3>
+                    <span className="text-xs font-bold text-green-600">{inProgressCompletion.completion_pct}% udfyldt</span>
+                  </div>
+                  <div className="h-2 bg-gray-100 rounded-full overflow-hidden mb-4">
+                    <div
+                      className="h-full bg-green-500 rounded-full transition-all"
+                      style={{ width: `${inProgressCompletion.completion_pct}%` }}
+                    />
+                  </div>
+                  {inProgressCompletion.blocking_issues.length > 0 && (
+                    <div className="space-y-1.5 mb-4">
+                      {inProgressCompletion.blocking_issues.slice(0, 3).map((issue, i) => (
+                        <div key={i} className="flex items-start gap-2 text-xs text-amber-700 bg-amber-50 rounded-lg px-3 py-2">
+                          <span className="font-bold flex-shrink-0 mt-0.5">!</span>
+                          {issue}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  <Link
+                    href={`/submit?id=${inProgressSubId}`}
+                    className="btn-primary inline-flex items-center gap-2 text-sm py-2 px-4"
+                  >
+                    Fortsæt dataindberetning <ArrowRight className="w-4 h-4" />
+                  </Link>
+                </div>
               )}
 
               {/* ── Reports table ─────────────────────────────────────── */}

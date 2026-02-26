@@ -24,9 +24,10 @@ function VerifyEmailInner() {
         setStatus("success")
         setTimeout(() => router.push("/dashboard"), 3000)
       })
-      .catch((err) => {
+      .catch((err: unknown) => {
+        const e = err as { response?: { data?: { detail?: string } } }
         setStatus("error")
-        setMessage(err?.response?.data?.detail || "Verification failed. The link may have expired.")
+        setMessage(e?.response?.data?.detail || "Verification failed. The link may have expired.")
       })
   }, [token, router])
 
@@ -82,14 +83,16 @@ function VerifyEmailInner() {
 function ResendButton() {
   const [sent, setSent] = useState(false)
   const [loading, setLoading] = useState(false)
+  const [error, setError] = useState("")
 
   async function resend() {
     setLoading(true)
+    setError("")
     try {
       await api.post("/auth/resend-verification")
       setSent(true)
     } catch {
-      alert("Could not resend. Please log in first.")
+      setError("Could not resend — please log in first.")
     } finally {
       setLoading(false)
     }
@@ -97,9 +100,12 @@ function ResendButton() {
 
   if (sent) return <p className="text-green-600 text-sm font-medium">New verification email sent!</p>
   return (
-    <button onClick={resend} disabled={loading} className="btn-secondary px-6 py-2.5">
-      {loading ? "Sending…" : "Resend verification email"}
-    </button>
+    <div className="flex flex-col gap-2">
+      {error && <p className="text-red-500 text-xs text-center">{error}</p>}
+      <button onClick={resend} disabled={loading} className="btn-secondary px-6 py-2.5">
+        {loading ? "Sending…" : "Resend verification email"}
+      </button>
+    </div>
   )
 }
 

@@ -69,7 +69,7 @@ const FAQS = [
   },
   {
     q: "What emission factors does ESG Copilot use?",
-    a: "We use DEFRA 2023 emission factors for Scope 1, IEA 2023 grid factors for Scope 2, and IPCC AR6 / DEFRA 2023 for Scope 3 travel and procurement.",
+    a: "We use DEFRA 2024 emission factors for Scope 1 & 3, IEA 2024 / Energistyrelsen 2024 grid factors for Scope 2, and EPA EEIO 2.0 for spend-based Scope 3 procurement.",
   },
   {
     q: "Is my data GDPR compliant?",
@@ -97,6 +97,7 @@ function FeatureValue({ val }: { val: boolean | string }) {
 export default function PricingPage() {
   const [annual, setAnnual] = useState(false)
   const [loading, setLoading] = useState<string | null>(null)
+  const [checkoutError, setCheckoutError] = useState("")
   const router = useRouter()
 
   async function handleCheckout(plan: string) {
@@ -111,8 +112,7 @@ export default function PricingPage() {
       window.location.href = data.checkout_url
     } catch (err: unknown) {
       const e = err as { response?: { data?: { detail?: string } } }
-      const msg = e?.response?.data?.detail || "Payment service unavailable. Please contact support."
-      alert(msg)
+      setCheckoutError(e?.response?.data?.detail || "Payment service unavailable. Please contact support.")
     } finally {
       setLoading(null)
     }
@@ -148,6 +148,11 @@ export default function PricingPage() {
 
       {/* Plans */}
       <section className="pb-20 px-6">
+        {checkoutError && (
+          <div className="max-w-xl mx-auto mb-6 bg-red-50 border border-red-200 rounded-xl px-4 py-3 text-red-700 text-sm text-center">
+            {checkoutError}
+          </div>
+        )}
         <div className="max-w-5xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-6">
           {PLANS.map(plan => (
             <div
