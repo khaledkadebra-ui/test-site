@@ -7,7 +7,8 @@ import {
   getCompleteness, submitSubmission, calculatePreview, generateReport
 } from "@/lib/api"
 import Sidebar from "@/components/Sidebar"
-import { Flame, Zap, Globe, ShoppingBag, Shield, BarChart2, CheckCircle, ChevronRight, Users, Leaf, SkipForward } from "lucide-react"
+import InvoiceUploadModal from "@/components/InvoiceUploadModal"
+import { Flame, Zap, Globe, ShoppingBag, Shield, BarChart2, CheckCircle, ChevronRight, Users, Leaf, SkipForward, Paperclip } from "lucide-react"
 
 const STEPS = [
   { label: "Scope 1",       icon: Flame,        vsme: "B3",     optional: false },
@@ -93,6 +94,7 @@ function SubmitPageInner() {
   const [step, setStep] = useState(startReview ? 7 : 0)
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState("")
+  const [uploadModal, setUploadModal] = useState<{ type: "electricity_bill" | "gas_invoice" | "water_bill" | "fuel_receipt" | "waste_invoice" | "general" } | null>(null)
   const [preview, setPreview] = useState<Record<string, unknown> | null>(null)
   const [completeness, setCompleteness] = useState<{ is_complete: boolean; completion_pct: number; blocking_issues: string[] } | null>(null)
   const [generating, setGenerating] = useState(false)
@@ -288,6 +290,18 @@ function SubmitPageInner() {
               <>
                 <StepHeader icon={Zap} color="bg-yellow-100 text-yellow-600" title="Scope 2 — Indirekte energiemissioner" subtitle="Indkøbt el og fjernvarme — baseret på Energistyrelsens 2024 emissionsfaktorer" vsme="B3" />
                 <div className="space-y-4">
+                  {/* AI upload shortcut */}
+                  <button
+                    type="button"
+                    onClick={() => setUploadModal({ type: "electricity_bill" })}
+                    className="w-full flex items-center gap-3 px-4 py-3 rounded-xl border-2 border-dashed border-green-200 bg-green-50/50 hover:bg-green-50 hover:border-green-300 transition-colors text-left"
+                  >
+                    <Paperclip className="w-5 h-5 text-green-500 flex-shrink-0" />
+                    <div>
+                      <p className="text-sm font-semibold text-green-700">Upload elregning — AI udfylder automatisk</p>
+                      <p className="text-xs text-green-500">Træk PDF eller billede hertil · Claude læser kWh og periode</p>
+                    </div>
+                  </button>
                   <div className="grid grid-cols-2 gap-4">
                     <Field label="Elforbrug" unit="kWh" value={scope2.electricity_kwh} onChange={v => setScope2(s => ({ ...s, electricity_kwh: v }))} hint="Aflæst fra elregning — årstal" />
                     <Field label="Fjernvarme" unit="kWh" value={scope2.district_heating_kwh} onChange={v => setScope2(s => ({ ...s, district_heating_kwh: v }))} />
@@ -545,6 +559,21 @@ function SubmitPageInner() {
           </div>
         </div>
       </div>
+
+      {/* Invoice upload modal */}
+      {uploadModal && (
+        <InvoiceUploadModal
+          documentType={uploadModal.type}
+          submissionId={submissionId}
+          onExtracted={(fields) => {
+            if (uploadModal.type === "electricity_bill") {
+              if (fields.electricity_kwh != null) setScope2(s => ({ ...s, electricity_kwh: String(fields.electricity_kwh) }))
+              if (fields.district_heating_kwh != null) setScope2(s => ({ ...s, district_heating_kwh: String(fields.district_heating_kwh) }))
+            }
+          }}
+          onClose={() => setUploadModal(null)}
+        />
+      )}
     </div>
   )
 }

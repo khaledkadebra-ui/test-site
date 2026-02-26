@@ -6,10 +6,12 @@ from app.models.company import Company
 from app.models.submission import DataSubmission, EnergyData, TravelData, ProcurementData, ESGPolicyData
 from app.models.report import Report, ReportResults
 from app.models.audit_log import AuditLog
+from app.models.materiality import MaterialityAssessment
 
 __all__ = [
     "User", "Company",
     "DataSubmission", "EnergyData", "TravelData", "ProcurementData", "ESGPolicyData",
     "Report", "ReportResults",
     "AuditLog",
+    "MaterialityAssessment",
 ]

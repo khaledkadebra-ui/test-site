@@ -4,7 +4,7 @@ import { usePathname } from "next/navigation"
 import { logout } from "@/lib/api"
 import {
   LayoutDashboard, Wind, Target, FileText, TrendingUp,
-  Upload, Settings, CreditCard, LogOut, Leaf, Zap
+  Upload, Settings, CreditCard, LogOut, Leaf, Zap, Microscope
 } from "lucide-react"
 
 interface SidebarProps {
@@ -27,7 +27,8 @@ const NAV_GROUPS = [
   {
     label: "Data",
     items: [
-      { href: "/uploads",  label: "Data & Upload",  icon: Upload },
+      { href: "/uploads",     label: "Data & Upload",          icon: Upload },
+      { href: "/materiality", label: "Væsentlighedsanalyse",   icon: Microscope },
     ],
   },
   {

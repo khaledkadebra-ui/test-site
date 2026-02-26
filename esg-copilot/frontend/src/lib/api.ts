@@ -174,6 +174,51 @@ export async function createPortalSession() {
   return data
 }
 
+// ── Materiality Assessment ─────────────────────────────────────────────────────
+
+export async function runMaterialityAssessment(companyId: string) {
+  const { data } = await api.post(`/companies/${companyId}/materiality`)
+  return data
+}
+
+export async function getMaterialityAssessment(companyId: string) {
+  const { data } = await api.get(`/companies/${companyId}/materiality`)
+  return data
+}
+
+export async function clearMaterialityAssessment(companyId: string) {
+  await api.delete(`/companies/${companyId}/materiality`)
+}
+
+// ── Document Extraction ────────────────────────────────────────────────────────
+
+export async function uploadDocument(file: File, submissionId?: string) {
+  const form = new FormData()
+  form.append("file", file)
+  if (submissionId) form.append("submission_id", submissionId)
+  const { data } = await api.post("/documents/upload", form, {
+    headers: { "Content-Type": "multipart/form-data" },
+  })
+  return data
+}
+
+export async function extractDocument(
+  documentId: string,
+  documentType: "electricity_bill" | "gas_invoice" | "water_bill" | "fuel_receipt" | "waste_invoice" | "general" = "general"
+) {
+  const form = new FormData()
+  form.append("document_type", documentType)
+  const { data } = await api.post(`/documents/${documentId}/extract`, form, {
+    headers: { "Content-Type": "multipart/form-data" },
+  })
+  return data
+}
+
+export async function listDocuments() {
+  const { data } = await api.get("/documents")
+  return data
+}
+
 // ── Email verification ─────────────────────────────────────────────────────────
 
 export async function verifyEmail(token: string) {
