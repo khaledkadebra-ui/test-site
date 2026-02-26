@@ -8,6 +8,19 @@ import Sidebar from "@/components/Sidebar"
 import { TrendingUp, Wind, Users, Building2, ArrowLeft, Loader2, FileDown, Target, Map } from "lucide-react"
 import type { ReportPdfProps } from "@/components/ReportPdf"
 
+// Strip markdown syntax so AI text renders cleanly as prose
+function stripMd(text: string): string {
+  if (!text) return ""
+  return text
+    .replace(/^#{1,6}\s+/gm, "")       // headings
+    .replace(/\*\*(.+?)\*\*/g, "$1")   // bold
+    .replace(/\*(.+?)\*/g, "$1")       // italic
+    .replace(/^[-*]\s+/gm, "• ")       // bullet lists
+    .replace(/^---+$/gm, "")           // hr
+    .replace(/\n{3,}/g, "\n\n")        // collapse triple newlines
+    .trim()
+}
+
 // Dynamic import so @react-pdf/renderer never runs on the server
 const PdfDownloadButton = dynamic(() => import("@/components/PdfDownloadButton"), {
   ssr: false,
@@ -167,7 +180,7 @@ export default function ReportPage() {
             <h2 className="section-title flex items-center gap-2">
               <TrendingUp className="w-4 h-4 text-green-500" /> Ledelsesoversigt (B1)
             </h2>
-            <p className="text-gray-600 leading-relaxed text-sm whitespace-pre-line">{r.executive_summary}</p>
+            <p className="text-gray-600 leading-relaxed text-sm whitespace-pre-line">{stripMd(r.executive_summary)}</p>
           </div>
 
           {/* CO2 + ESG charts */}
@@ -228,13 +241,13 @@ export default function ReportPage() {
               <h2 className="section-title flex items-center gap-2">
                 <Wind className="w-4 h-4 text-blue-500" /> B3 — CO₂-analyse
               </h2>
-              <p className="text-gray-600 leading-relaxed text-sm whitespace-pre-line">{r.co2_narrative}</p>
+              <p className="text-gray-600 leading-relaxed text-sm whitespace-pre-line">{stripMd(r.co2_narrative)}</p>
             </div>
             <div className="card">
               <h2 className="section-title flex items-center gap-2">
                 <Users className="w-4 h-4 text-purple-500" /> ESG-præstation
               </h2>
-              <p className="text-gray-600 leading-relaxed text-sm whitespace-pre-line">{r.esg_narrative}</p>
+              <p className="text-gray-600 leading-relaxed text-sm whitespace-pre-line">{stripMd(r.esg_narrative)}</p>
             </div>
           </div>
 
@@ -247,7 +260,7 @@ export default function ReportPage() {
             <p className="text-xs text-gray-400 mb-4 italic">
               Konkrete handlinger med SMART-mål, KPI&apos;er og estimeret CO₂-reduktion
             </p>
-            <p className="text-gray-600 leading-relaxed text-sm whitespace-pre-line">{r.improvements_narrative}</p>
+            <p className="text-gray-600 leading-relaxed text-sm whitespace-pre-line">{stripMd(r.improvements_narrative)}</p>
           </div>
 
           {/* Identificerede mangler */}
@@ -271,7 +284,7 @@ export default function ReportPage() {
               <Map className="w-4 h-4 text-green-500" /> 12-måneders handlingsplan
             </h2>
             {r.roadmap_narrative && (
-              <p className="text-gray-500 text-sm mb-5 whitespace-pre-line">{r.roadmap_narrative}</p>
+              <p className="text-gray-500 text-sm mb-5 whitespace-pre-line">{stripMd(r.roadmap_narrative)}</p>
             )}
             <div className="grid grid-cols-4 gap-4">
               {(["Q1", "Q2", "Q3", "Q4"] as const).map(q => (
