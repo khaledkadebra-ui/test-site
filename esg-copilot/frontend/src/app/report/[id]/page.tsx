@@ -1,10 +1,22 @@
 "use client"
 import { useEffect, useState } from "react"
 import { useParams, useRouter } from "next/navigation"
-import { getReportStatus, getReport, getPdfUrl } from "@/lib/api"
+import dynamic from "next/dynamic"
+import { getReportStatus, getReport, getMe, getCompany } from "@/lib/api"
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from "recharts"
 import Sidebar from "@/components/Sidebar"
-import { TrendingUp, Wind, Users, Building2, Download, ArrowLeft, Loader2, FileDown, Target, Map } from "lucide-react"
+import { TrendingUp, Wind, Users, Building2, ArrowLeft, Loader2, FileDown, Target, Map } from "lucide-react"
+import type { ReportPdfProps } from "@/components/ReportPdf"
+
+// Dynamic import so @react-pdf/renderer never runs on the server
+const PdfDownloadButton = dynamic(() => import("@/components/PdfDownloadButton"), {
+  ssr: false,
+  loading: () => (
+    <button className="btn-primary flex items-center gap-2 py-2" disabled>
+      <Loader2 className="w-4 h-4 animate-spin" /> Indlæser PDF…
+    </button>
+  ),
+})
 
 const RATING_COLOR: Record<string, string> = { A: "#22c55e", B: "#84cc16", C: "#eab308", D: "#f97316", E: "#ef4444" }
 const SCOPE_COLORS = ["#22c55e", "#3b82f6", "#a855f7"]
@@ -15,38 +27,53 @@ const PRIORITY_STYLE: Record<string, string> = {
 }
 const PRIORITY_LABEL: Record<string, string> = { high: "Høj", medium: "Middel", low: "Lav" }
 
+type Rec = {
+  id: string; title: string; description: string; effort: string; category: string;
+  priority: string; timeline: string; smart_goal: string; action_steps: string[];
+  score_improvement_pts: number; estimated_co2_reduction_pct: number; kpis: string[]
+}
+
+type ReportData = {
+  esg_rating: string
+  esg_score_total: number
+  esg_score_e: number
+  esg_score_s: number
+  esg_score_g: number
+  industry_percentile: number
+  total_co2e_tonnes: number
+  scope1_co2e_tonnes: number
+  scope2_co2e_tonnes: number
+  scope3_co2e_tonnes: number
+  executive_summary: string
+  co2_narrative: string
+  esg_narrative: string
+  improvements_narrative: string
+  roadmap_narrative: string
+  identified_gaps: string[]
+  recommendations: Rec[]
+  disclaimer: string
+  completed_at?: string
+}
+
 export default function ReportPage() {
   const { id } = useParams<{ id: string }>()
   const router = useRouter()
   const [status, setStatus] = useState("processing")
-  const [report, setReport] = useState<Record<string, unknown> | null>(null)
-  const [pdfLoading, setPdfLoading] = useState(false)
+  const [report, setReport] = useState<ReportData | null>(null)
+  const [companyName, setCompanyName] = useState("Min Virksomhed")
 
   useEffect(() => { if (id) pollStatus() }, [id])
 
-  async function downloadPdf() {
-    setPdfLoading(true)
-    try {
-      const data = await getPdfUrl(id)
-      if (data.pdf_url) {
-        window.open(data.pdf_url, "_blank")
-      } else {
-        window.print()
-      }
-    } catch {
-      window.print()
-    } finally {
-      setPdfLoading(false)
-    }
-  }
-
   async function pollStatus() {
     try {
+      // Load company name in parallel with status poll
+      getMe().then(me => getCompany(me.company_id)).then(c => setCompanyName(c.name)).catch(() => {})
+
       const s = await getReportStatus(id)
       setStatus(s.status)
       if (s.status === "completed") {
         const r = await getReport(id)
-        setReport(r)
+        setReport(r as ReportData)
       } else if (s.status === "processing") {
         setTimeout(pollStatus, 3000)
       }
@@ -59,34 +86,40 @@ export default function ReportPage() {
   if (status === "failed") return <Failed />
   if (!report) return <Processing />
 
-  const r = report as {
-    esg_rating: string
-    esg_score_total: number
-    esg_score_e: number
-    esg_score_s: number
-    esg_score_g: number
-    industry_percentile: number
-    total_co2e_tonnes: number
-    scope1_co2e_tonnes: number
-    scope2_co2e_tonnes: number
-    scope3_co2e_tonnes: number
-    executive_summary: string
-    co2_narrative: string
-    esg_narrative: string
-    improvements_narrative: string
-    roadmap_narrative: string
-    identified_gaps: { priority: string; title: string; description: string }[]
-    recommendations: { quarter: string; title: string; smart_goal?: string }[]
-    disclaimer: string
-  }
+  const r = report
+  const ratingColor = RATING_COLOR[r.esg_rating] || "#6b7280"
 
   const scopeData = [
-    { name: "Scope 1 — Direkte",      value: r.scope1_co2e_tonnes },
-    { name: "Scope 2 — Energi",        value: r.scope2_co2e_tonnes },
-    { name: "Scope 3 — Værdikæde",     value: r.scope3_co2e_tonnes },
+    { name: "Scope 1 — Direkte",  value: r.scope1_co2e_tonnes },
+    { name: "Scope 2 — Energi",   value: r.scope2_co2e_tonnes },
+    { name: "Scope 3 — Værdikæde", value: r.scope3_co2e_tonnes },
   ]
 
-  const ratingColor = RATING_COLOR[r.esg_rating] || "#6b7280"
+  // Build props for PDF
+  const reportDateStr = r.completed_at ?? new Date().toISOString()
+  const pdfProps: ReportPdfProps = {
+    companyName,
+    reportYear:  r.completed_at ? new Date(r.completed_at).getFullYear() : new Date().getFullYear(),
+    reportDate:  reportDateStr,
+    esgRating:   r.esg_rating,
+    esgScoreTotal: r.esg_score_total,
+    esgScoreE:   r.esg_score_e,
+    esgScoreS:   r.esg_score_s,
+    esgScoreG:   r.esg_score_g,
+    industryPercentile: r.industry_percentile,
+    totalCo2Tonnes:   r.total_co2e_tonnes,
+    scope1Co2Tonnes:  r.scope1_co2e_tonnes,
+    scope2Co2Tonnes:  r.scope2_co2e_tonnes,
+    scope3Co2Tonnes:  r.scope3_co2e_tonnes,
+    executiveSummary: r.executive_summary,
+    co2Narrative:     r.co2_narrative,
+    esgNarrative:     r.esg_narrative,
+    improvementsNarrative: r.improvements_narrative,
+    roadmapNarrative: r.roadmap_narrative ?? "",
+    identifiedGaps:   r.identified_gaps,
+    recommendations:  r.recommendations,
+    disclaimer:       r.disclaimer,
+  }
 
   return (
     <div className="flex min-h-screen bg-gray-50">
@@ -104,16 +137,8 @@ export default function ReportPage() {
               <p className="text-sm text-gray-500">AI-genereret · Energistyrelsen 2024 emissionsfaktorer</p>
             </div>
           </div>
-          <button
-            className="btn-primary flex items-center gap-2 py-2"
-            onClick={downloadPdf}
-            disabled={pdfLoading}
-          >
-            {pdfLoading
-              ? <><Loader2 className="w-4 h-4 animate-spin" /> Forbereder…</>
-              : <><FileDown className="w-4 h-4" /> Download PDF</>
-            }
-          </button>
+
+          <PdfDownloadButton {...pdfProps} />
         </div>
 
         <div className="p-8 space-y-6 max-w-5xl">
@@ -132,7 +157,7 @@ export default function ReportPage() {
               <div className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Total tCO₂e</div>
             </div>
             <div className="card text-center border-t-[3px] border-t-purple-400">
-              <div className="text-4xl font-bold text-gray-900 mb-1">{Math.round(r.industry_percentile)}<span className="text-2xl">.</span></div>
+              <div className="text-4xl font-bold text-gray-900 mb-1">{Math.round(r.industry_percentile)}</div>
               <div className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Branche-percentil</div>
             </div>
           </div>
@@ -213,7 +238,7 @@ export default function ReportPage() {
             </div>
           </div>
 
-          {/* ── FORESLÅEDE TILTAG & FORBEDRINGER ──────────────────────────────── */}
+          {/* Foreslåede tiltag */}
           <div className="card border-l-4 border-l-green-500">
             <h2 className="section-title flex items-center gap-2 text-green-700">
               <Target className="w-5 h-5 text-green-500" />
@@ -229,16 +254,11 @@ export default function ReportPage() {
           {r.identified_gaps.length > 0 && (
             <div className="card">
               <h2 className="section-title">Identificerede mangler</h2>
-              <div className="space-y-3">
+              <div className="space-y-2">
                 {r.identified_gaps.map((gap, i) => (
-                  <div key={i} className={`flex gap-4 p-4 rounded-xl border ${PRIORITY_STYLE[gap.priority] || PRIORITY_STYLE.low}`}>
-                    <span className="text-xs font-bold uppercase tracking-wider pt-0.5 min-w-[55px] opacity-70">
-                      {PRIORITY_LABEL[gap.priority] || gap.priority}
-                    </span>
-                    <div>
-                      <div className="font-semibold text-sm">{gap.title}</div>
-                      <div className="text-xs opacity-75 mt-0.5 leading-relaxed">{gap.description}</div>
-                    </div>
+                  <div key={i} className="flex gap-3 p-3 rounded-xl bg-amber-50 border border-amber-100">
+                    <span className="text-amber-500 mt-0.5 flex-shrink-0">⚠</span>
+                    <p className="text-sm text-amber-900 leading-relaxed">{gap}</p>
                   </div>
                 ))}
               </div>
@@ -250,7 +270,9 @@ export default function ReportPage() {
             <h2 className="section-title flex items-center gap-2">
               <Map className="w-4 h-4 text-green-500" /> 12-måneders handlingsplan
             </h2>
-            <p className="text-gray-500 text-sm mb-5 whitespace-pre-line">{r.roadmap_narrative}</p>
+            {r.roadmap_narrative && (
+              <p className="text-gray-500 text-sm mb-5 whitespace-pre-line">{r.roadmap_narrative}</p>
+            )}
             <div className="grid grid-cols-4 gap-4">
               {(["Q1", "Q2", "Q3", "Q4"] as const).map(q => (
                 <div key={q} className="bg-gray-50 rounded-xl overflow-hidden border border-gray-100">
@@ -258,10 +280,10 @@ export default function ReportPage() {
                     {q === "Q1" ? "Kvartal 1" : q === "Q2" ? "Kvartal 2" : q === "Q3" ? "Kvartal 3" : "Kvartal 4"}
                   </div>
                   <div className="p-3 space-y-2">
-                    {r.recommendations.filter(a => a.quarter === q).map((a, i) => (
+                    {r.recommendations.filter(a => a.timeline === q).map((a, i) => (
                       <div key={i} className="text-xs text-gray-600 border-l-2 border-green-400 pl-2 leading-relaxed">{a.title}</div>
                     ))}
-                    {r.recommendations.filter(a => a.quarter === q).length === 0 && (
+                    {r.recommendations.filter(a => a.timeline === q).length === 0 && (
                       <div className="text-xs text-gray-300">—</div>
                     )}
                   </div>
