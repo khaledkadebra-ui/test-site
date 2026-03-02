@@ -102,8 +102,9 @@ export default function MaterialityPage() {
   const [loading, setLoading]       = useState(true)
   const [running, setRunning]       = useState(false)
   const [error, setError]           = useState("")
-  const [companyId, setCompanyId]   = useState("")
+  const [companyId, setCompanyId]   = useState<string | null>(null)
   const [filter, setFilter]         = useState<Materiality | "all">("all")
+  const [meta, setMeta]             = useState({ companyName: "", userEmail: "" })
 
   useEffect(() => { load() }, [])
 
@@ -111,24 +112,34 @@ export default function MaterialityPage() {
     setLoading(true)
     try {
       const me = await getMe()
+      if (!me.company_id) {
+        setError("Opret venligst en virksomhed først under Indstillinger.")
+        setLoading(false)
+        return
+      }
       setCompanyId(me.company_id)
+      setMeta(m => ({ ...m, userEmail: me.email || "" }))
+      const c = await getCompany(me.company_id).catch(() => null)
+      if (c) setMeta(m => ({ ...m, companyName: c.name || "" }))
       const data = await getMaterialityAssessment(me.company_id).catch(() => null)
       if (data) setAssessment(data)
     } catch {
-      setError("Kunne ikke indlæse data")
+      router.push("/login")
     } finally {
       setLoading(false)
     }
   }
 
   async function runAssessment() {
+    if (!companyId) return
     setRunning(true)
     setError("")
     try {
       const data = await runMaterialityAssessment(companyId)
       setAssessment(data)
-    } catch {
-      setError("AI-analyse mislykkedes — prøv igen")
+    } catch (err: unknown) {
+      const e = err as { response?: { data?: { detail?: string } } }
+      setError(e?.response?.data?.detail || "AI-analyse mislykkedes — prøv igen om lidt")
     } finally {
       setRunning(false)
     }
@@ -141,12 +152,12 @@ export default function MaterialityPage() {
     await runAssessment()
   }
 
-  if (loading) return <Layout><div className="flex items-center justify-center h-64"><Loader2 className="w-8 h-8 animate-spin text-green-500" /></div></Layout>
+  if (loading) return <Layout meta={meta}><div className="flex items-center justify-center h-64"><Loader2 className="w-8 h-8 animate-spin text-green-500" /></div></Layout>
 
   // No assessment yet — show launch screen
   if (!assessment && !running) {
     return (
-      <Layout>
+      <Layout meta={meta}>
         <div className="max-w-2xl mx-auto text-center py-20">
           <div className="w-20 h-20 bg-green-50 rounded-3xl flex items-center justify-center mx-auto mb-6">
             <Leaf className="w-10 h-10 text-green-500" />
@@ -171,7 +182,7 @@ export default function MaterialityPage() {
   // Running state
   if (running) {
     return (
-      <Layout>
+      <Layout meta={meta}>
         <div className="max-w-lg mx-auto text-center py-20">
           <div className="w-20 h-20 bg-green-50 rounded-3xl flex items-center justify-center mx-auto mb-6 animate-pulse">
             <Loader2 className="w-10 h-10 text-green-500 animate-spin" />
@@ -215,7 +226,7 @@ export default function MaterialityPage() {
   }
 
   return (
-    <Layout>
+    <Layout meta={meta}>
       {/* Header */}
       <div className="flex items-start justify-between mb-6">
         <div>
@@ -324,10 +335,10 @@ export default function MaterialityPage() {
   )
 }
 
-function Layout({ children }: { children: React.ReactNode }) {
+function Layout({ children, meta }: { children: React.ReactNode; meta?: { companyName: string; userEmail: string } }) {
   return (
     <div className="flex min-h-screen bg-gray-50">
-      <Sidebar />
+      <Sidebar companyName={meta?.companyName} userEmail={meta?.userEmail} />
       <div className="ml-60 flex-1 p-8 max-w-4xl">{children}</div>
     </div>
   )

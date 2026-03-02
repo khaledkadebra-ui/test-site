@@ -8,18 +8,18 @@ import { CheckCircle, X, ArrowRight, Zap, Shield, Headphones } from "lucide-reac
 import api from "@/lib/api"
 
 const FEATURES = [
-  { label: "ESG reports per year",         free: "1",       starter: "5",     pro: "Unlimited" },
-  { label: "CO₂ calculation (Scope 1/2/3)", free: true,     starter: true,    pro: true },
-  { label: "ESG score & rating (A–E)",      free: true,     starter: true,    pro: true },
-  { label: "Gap analysis & action plan",    free: true,     starter: true,    pro: true },
-  { label: "AI-written narratives",         free: true,     starter: true,    pro: true },
-  { label: "PDF report download",           free: false,    starter: true,    pro: true },
-  { label: "12-month roadmap",              free: true,     starter: true,    pro: true },
-  { label: "Industry benchmarking",         free: true,     starter: true,    pro: true },
-  { label: "Data export (CSV/Excel)",       free: false,    starter: true,    pro: true },
-  { label: "Priority support",             free: false,    starter: false,   pro: true },
-  { label: "API access",                   free: false,    starter: false,   pro: true },
-  { label: "White-label reports",          free: false,    starter: false,   pro: true },
+  { label: "ESG-rapporter om året",              free: "1",       starter: "5",          pro: "Ubegrænset" },
+  { label: "CO₂-beregning (Scope 1/2/3)",         free: true,     starter: true,         pro: true },
+  { label: "ESG-score & vurdering (A–E)",          free: true,     starter: true,         pro: true },
+  { label: "Gap-analyse & handlingsplan",          free: true,     starter: true,         pro: true },
+  { label: "AI-skrevne tekster",                   free: true,     starter: true,         pro: true },
+  { label: "PDF-rapport download",                 free: false,    starter: true,         pro: true },
+  { label: "12-måneders handlingsplan",            free: true,     starter: true,         pro: true },
+  { label: "Branche-benchmark",                    free: true,     starter: true,         pro: true },
+  { label: "Dataeksport (CSV/Excel)",              free: false,    starter: true,         pro: true },
+  { label: "Prioriteret support",                  free: false,    starter: false,        pro: true },
+  { label: "API-adgang",                           free: false,    starter: false,        pro: true },
+  { label: "White-label rapporter",                free: false,    starter: false,        pro: true },
 ]
 
 const PLANS = [
@@ -27,10 +27,10 @@ const PLANS = [
     id: "free",
     name: "Free",
     price: { monthly: 0, annual: 0 },
-    desc: "Get started and generate your first ESG report for free.",
+    desc: "Kom i gang gratis og generer din første ESG-rapport.",
     highlight: false,
     badge: null,
-    cta: "Get started free",
+    cta: "Opret gratis konto",
     ctaHref: "/register",
     stripePlan: null,
   },
@@ -38,10 +38,10 @@ const PLANS = [
     id: "starter",
     name: "Starter",
     price: { monthly: 49, annual: 39 },
-    desc: "For SMEs that need regular ESG reporting and PDF exports.",
+    desc: "Til SMV'er der har brug for løbende ESG-rapportering og PDF-eksport.",
     highlight: true,
-    badge: "Most popular",
-    cta: "Start Starter plan",
+    badge: "Mest populær",
+    cta: "Vælg Starter",
     ctaHref: null,
     stripePlan: "starter",
   },
@@ -49,10 +49,10 @@ const PLANS = [
     id: "professional",
     name: "Professional",
     price: { monthly: 149, annual: 119 },
-    desc: "Unlimited reports, priority support, and API access.",
+    desc: "Ubegrænsede rapporter, prioriteret support og API-adgang.",
     highlight: false,
     badge: null,
-    cta: "Go Professional",
+    cta: "Vælg Professional",
     ctaHref: null,
     stripePlan: "professional",
   },
@@ -60,28 +60,28 @@ const PLANS = [
 
 const FAQS = [
   {
-    q: "What is included in the free plan?",
-    a: "The free plan includes one ESG report per year with CO₂ calculations, ESG scoring, gap analysis, and AI narratives. PDF download requires a paid plan.",
+    q: "Hvad er inkluderet i free-planen?",
+    a: "Free-planen inkluderer én ESG-rapport om året med CO₂-beregning, ESG-score, gap-analyse og AI-tekster. PDF-download kræver en betalt plan.",
   },
   {
-    q: "Can I cancel my subscription at any time?",
-    a: "Yes, you can cancel anytime. Your subscription remains active until the end of the billing period.",
+    q: "Kan jeg opsige mit abonnement når som helst?",
+    a: "Ja, du kan opsige når som helst. Dit abonnement forbliver aktivt til slutningen af betalingsperioden.",
   },
   {
-    q: "What emission factors does ESG Copilot use?",
-    a: "We use DEFRA 2024 emission factors for Scope 1 & 3, IEA 2024 / Energistyrelsen 2024 grid factors for Scope 2, and EPA EEIO 2.0 for spend-based Scope 3 procurement.",
+    q: "Hvilke emissionsfaktorer bruger ESG Copilot?",
+    a: "Vi anvender DEFRA 2024-emissionsfaktorer for Scope 1 & 3, IEA 2024 / Energistyrelsen 2024 nettofaktorer for Scope 2 og EPA EEIO 2.0 til udgiftsbaseret Scope 3-indkøb.",
   },
   {
-    q: "Is my data GDPR compliant?",
-    a: "Yes. All data is stored and processed within the EU. We never share your data with third parties.",
+    q: "Er mine data GDPR-kompatible?",
+    a: "Ja. Alle data opbevares og behandles inden for EU. Vi deler aldrig dine data med tredjeparter.",
   },
   {
-    q: "What standard does the report follow?",
-    a: "Our reports align with the VSME (Voluntary SME) sustainability reporting standard, which is designed specifically for small and medium-sized businesses.",
+    q: "Hvilken standard følger rapporten?",
+    a: "Vores rapporter er i overensstemmelse med VSME (Voluntary SME) bæredygtighedsrapporteringsstandarden, som er designet specifikt til små og mellemstore virksomheder.",
   },
   {
-    q: "Do I need ESG expertise to use ESG Copilot?",
-    a: "No. Our guided wizard asks plain-language questions and handles all the calculations and benchmarking automatically.",
+    q: "Behøver jeg ESG-ekspertise for at bruge ESG Copilot?",
+    a: "Nej. Vores guidede dataindberetning stiller spørgsmål på almindeligt dansk og håndterer alle beregninger og benchmarks automatisk.",
   },
 ]
 
@@ -112,7 +112,7 @@ export default function PricingPage() {
       window.location.href = data.checkout_url
     } catch (err: unknown) {
       const e = err as { response?: { data?: { detail?: string } } }
-      setCheckoutError(e?.response?.data?.detail || "Payment service unavailable. Please contact support.")
+      setCheckoutError(e?.response?.data?.detail || "Betalingsservice utilgængelig. Kontakt venligst support.")
     } finally {
       setLoading(null)
     }
@@ -125,8 +125,8 @@ export default function PricingPage() {
       {/* Header */}
       <section className="pt-28 pb-16 bg-gradient-to-b from-gray-50 to-white text-center">
         <div className="max-w-3xl mx-auto px-6">
-          <h1 className="text-5xl font-black text-gray-900 mb-4">Simple, transparent pricing</h1>
-          <p className="text-xl text-gray-500 mb-8">Start for free. Upgrade when you need more reports or PDF exports.</p>
+          <h1 className="text-5xl font-black text-gray-900 mb-4">Enkel, transparent prissætning</h1>
+          <p className="text-xl text-gray-500 mb-8">Start gratis. Opgrader når du har brug for flere rapporter eller PDF-eksport.</p>
 
           {/* Toggle */}
           <div className="inline-flex items-center gap-3 bg-gray-100 rounded-xl p-1">
@@ -134,13 +134,13 @@ export default function PricingPage() {
               onClick={() => setAnnual(false)}
               className={`px-5 py-2 rounded-lg text-sm font-semibold transition-colors ${!annual ? "bg-white shadow text-gray-900" : "text-gray-500"}`}
             >
-              Monthly
+              Månedligt
             </button>
             <button
               onClick={() => setAnnual(true)}
               className={`px-5 py-2 rounded-lg text-sm font-semibold transition-colors ${annual ? "bg-white shadow text-gray-900" : "text-gray-500"}`}
             >
-              Annual <span className="text-green-500 ml-1">Save 20%</span>
+              Årligt <span className="text-green-500 ml-1">Spar 20%</span>
             </button>
           </div>
         </div>
@@ -175,11 +175,11 @@ export default function PricingPage() {
                     €{annual ? plan.price.annual : plan.price.monthly}
                   </span>
                   {plan.price.monthly > 0 && (
-                    <span className="text-gray-400 text-sm">/month</span>
+                    <span className="text-gray-400 text-sm">/md.</span>
                   )}
                 </div>
                 {annual && plan.price.monthly > 0 && (
-                  <p className="text-xs text-green-600 font-medium mb-3">Billed annually (save €{(plan.price.monthly - plan.price.annual) * 12}/year)</p>
+                  <p className="text-xs text-green-600 font-medium mb-3">Faktureres årligt (spar €{(plan.price.monthly - plan.price.annual) * 12}/år)</p>
                 )}
                 <p className="text-sm text-gray-500">{plan.desc}</p>
               </div>
@@ -205,7 +205,7 @@ export default function PricingPage() {
                       : "bg-gray-900 text-white hover:bg-gray-800"
                   }`}
                 >
-                  {loading === plan.stripePlan ? "Redirecting…" : plan.cta}
+                  {loading === plan.stripePlan ? "Omdirigerer…" : plan.cta}
                 </button>
               )}
             </div>
@@ -216,12 +216,12 @@ export default function PricingPage() {
       {/* Feature comparison table */}
       <section className="py-16 px-6 bg-gray-50">
         <div className="max-w-5xl mx-auto">
-          <h2 className="text-3xl font-black text-gray-900 mb-8 text-center">Full feature comparison</h2>
+          <h2 className="text-3xl font-black text-gray-900 mb-8 text-center">Fuld funktionssammenligning</h2>
           <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-sm">
             <table className="w-full">
               <thead>
                 <tr className="bg-gray-50 border-b border-gray-100">
-                  <th className="text-left text-sm font-semibold text-gray-700 px-6 py-4 w-1/2">Feature</th>
+                  <th className="text-left text-sm font-semibold text-gray-700 px-6 py-4 w-1/2">Funktion</th>
                   {PLANS.map(p => (
                     <th key={p.id} className="text-center text-sm font-bold px-4 py-4">
                       <span className={p.highlight ? "text-green-600" : "text-gray-900"}>{p.name}</span>
@@ -249,9 +249,9 @@ export default function PricingPage() {
         <div className="max-w-4xl mx-auto">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-center">
             {[
-              { icon: Shield, title: "GDPR Compliant", desc: "All data stored and processed within the EU." },
-              { icon: Zap, title: "Cancel anytime", desc: "No lock-in. Cancel your subscription whenever you want." },
-              { icon: Headphones, title: "Support included", desc: "Email support on all plans. Priority support on Pro." },
+              { icon: Shield, title: "GDPR-kompatibel", desc: "Alle data opbevares og behandles inden for EU." },
+              { icon: Zap, title: "Opsig når som helst", desc: "Ingen binding. Opsig dit abonnement når du vil." },
+              { icon: Headphones, title: "Support inkluderet", desc: "E-mailsupport på alle planer. Prioriteret support på Pro." },
             ].map(item => (
               <div key={item.title} className="p-6">
                 <div className="w-12 h-12 bg-green-50 rounded-xl flex items-center justify-center mx-auto mb-3">
@@ -268,7 +268,7 @@ export default function PricingPage() {
       {/* FAQs */}
       <section className="py-20 px-6 bg-gray-50">
         <div className="max-w-3xl mx-auto">
-          <h2 className="text-3xl font-black text-gray-900 mb-10 text-center">Frequently asked questions</h2>
+          <h2 className="text-3xl font-black text-gray-900 mb-10 text-center">Ofte stillede spørgsmål</h2>
           <div className="space-y-4">
             {FAQS.map(faq => (
               <div key={faq.q} className="bg-white rounded-xl border border-gray-100 px-6 py-5">
@@ -283,13 +283,13 @@ export default function PricingPage() {
       {/* CTA */}
       <section className="py-20 px-6 bg-[#0d1f2d] text-center">
         <div className="max-w-2xl mx-auto">
-          <h2 className="text-3xl font-black text-white mb-4">Start your ESG journey today</h2>
-          <p className="text-slate-400 mb-8">Free to get started. Upgrade when you need more.</p>
+          <h2 className="text-3xl font-black text-white mb-4">Start din ESG-rejse i dag</h2>
+          <p className="text-slate-400 mb-8">Gratis at komme i gang. Opgrader når du har brug for mere.</p>
           <Link
             href="/register"
             className="inline-flex items-center gap-2 bg-green-500 hover:bg-green-600 text-white font-semibold text-base px-8 py-4 rounded-xl transition-colors"
           >
-            Create free account <ArrowRight className="w-5 h-5" />
+            Opret gratis konto <ArrowRight className="w-5 h-5" />
           </Link>
         </div>
       </section>

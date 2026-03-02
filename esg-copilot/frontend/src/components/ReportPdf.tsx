@@ -328,19 +328,18 @@ export function ReportPdfDocument(props: ReportPdfProps) {
     esgScoreE, esgScoreS, esgScoreG, industryPercentile,
     totalCo2Tonnes, scope1Co2Tonnes, scope2Co2Tonnes, scope3Co2Tonnes,
     executiveSummary, co2Narrative, esgNarrative, improvementsNarrative,
-    identifiedGaps, recommendations, disclaimer, industryCode, countryCode,
+    disclaimer, industryCode, countryCode,
   } = props
+
+  // Null-safe arrays — PDF generation crashes if these are null/undefined
+  const identifiedGaps  = props.identifiedGaps  ?? []
+  const recommendations = props.recommendations ?? []
 
   const rColor = RATING_COLOR[esgRating] || C.gray600
   const year   = reportYear
   const dateStr = reportDate ? new Date(reportDate).toLocaleDateString("da-DK", { year: "numeric", month: "long", day: "numeric" }) : ""
-  const maxCo2  = Math.max(scope1Co2Tonnes, scope2Co2Tonnes, scope3Co2Tonnes, 0.01)
+  const maxCo2  = Math.max(scope1Co2Tonnes ?? 0, scope2Co2Tonnes ?? 0, scope3Co2Tonnes ?? 0, 0.01)
 
-  const gapsByPrio = {
-    high:   identifiedGaps.filter((_, i) => recommendations[i]?.priority === "high").slice(0, 3),
-    medium: identifiedGaps.slice(0, 8),
-    low:    [],
-  }
   // Simple gap list
   const gapList = identifiedGaps.slice(0, 14)
 
@@ -470,15 +469,15 @@ export function ReportPdfDocument(props: ReportPdfProps) {
               <Text style={s.kpiLabel}>ESG Rating</Text>
             </View>
             <View style={[s.kpiBox, { borderTopWidth: 3, borderTopColor: C.green }]}>
-              <Text style={s.kpiNum}>{esgScoreTotal.toFixed(1)}</Text>
+              <Text style={s.kpiNum}>{(esgScoreTotal ?? 0).toFixed(1)}</Text>
               <Text style={s.kpiLabel}>Score / 100</Text>
             </View>
             <View style={[s.kpiBox, { borderTopWidth: 3, borderTopColor: C.blue }]}>
-              <Text style={s.kpiNum}>{totalCo2Tonnes.toFixed(1)}</Text>
+              <Text style={s.kpiNum}>{(totalCo2Tonnes ?? 0).toFixed(1)}</Text>
               <Text style={s.kpiLabel}>Total tCO₂e</Text>
             </View>
             <View style={[s.kpiBox, { borderTopWidth: 3, borderTopColor: C.violet }]}>
-              <Text style={s.kpiNum}>{industryPercentile.toFixed(0)}</Text>
+              <Text style={s.kpiNum}>{(industryPercentile ?? 0).toFixed(0)}</Text>
               <Text style={s.kpiLabel}>Branche-percentil</Text>
             </View>
           </View>
@@ -640,7 +639,7 @@ export function ReportPdfDocument(props: ReportPdfProps) {
         <PageHeader companyName={companyName} section="Anbefalede tiltag" />
         <View style={s.pageBody}>
           <SectionHeading
-            badge={`${recommendations.length} Anbefalinger · Potentiel score-gevinst: +${recommendations.reduce((s, r) => s + (r.score_improvement_pts || 0), 0)} pt`}
+            badge={`${recommendations.length} Anbefalinger · Potentiel score-gevinst: +${recommendations.reduce((acc, r) => acc + (r.score_improvement_pts || 0), 0)} pt`}
             title="Anbefalede tiltag og forbedringer"
             sub="SMART-mål, handlingstrin og estimeret effekt"
           />

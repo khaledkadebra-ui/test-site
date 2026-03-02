@@ -28,6 +28,11 @@ const STATUS_COLORS: Record<string, string> = {
   inactive: "bg-gray-50 text-gray-500 border-gray-200",
 }
 
+const STATUS_LABELS: Record<string, string> = {
+  active: "Aktiv", trialing: "Prøveperiode", past_due: "Betaling forfalden",
+  cancelled: "Opsagt", inactive: "Inaktiv",
+}
+
 export default function BillingPage() {
   const router = useRouter()
   const [user, setUser] = useState<{ full_name: string; email: string } | null>(null)
@@ -100,8 +105,8 @@ export default function BillingPage() {
       <div className="ml-60 flex-1 flex flex-col">
         {/* Header */}
         <div className="bg-white border-b border-gray-100 px-8 py-5">
-          <h1 className="text-xl font-bold text-gray-900">Billing & Subscription</h1>
-          <p className="text-sm text-gray-500 mt-0.5">Manage your plan and payment details</p>
+          <h1 className="text-xl font-bold text-gray-900">Fakturering & Abonnement</h1>
+          <p className="text-sm text-gray-500 mt-0.5">Administrer din plan og betalingsoplysninger</p>
         </div>
 
         <div className="p-8 space-y-6 max-w-3xl">
@@ -114,21 +119,21 @@ export default function BillingPage() {
           <div className="card">
             <div className="flex items-start justify-between">
               <div>
-                <h2 className="section-title mb-1">Current Plan</h2>
+                <h2 className="section-title mb-1">Nuværende plan</h2>
                 <div className="flex items-center gap-3 mb-3">
                   <span className="text-2xl font-black text-gray-900">{PLAN_LABELS[sub?.plan || "free"]}</span>
                   <span className={`text-xs font-semibold px-2.5 py-1 rounded-full border ${STATUS_COLORS[sub?.status || "inactive"]}`}>
-                    {(sub?.status || "inactive").replace("_", " ").replace(/\b\w/g, l => l.toUpperCase())}
+                    {STATUS_LABELS[sub?.status || "inactive"] || sub?.status || "Inaktiv"}
                   </span>
                 </div>
                 {sub?.expires_at && (
                   <p className="text-sm text-gray-500">
-                    {sub.status === "cancelled" ? "Access until " : "Renews on "}
-                    {new Date(sub.expires_at).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" })}
+                    {sub.status === "cancelled" ? "Adgang til " : "Fornyes den "}
+                    {new Date(sub.expires_at).toLocaleDateString("da-DK", { day: "numeric", month: "long", year: "numeric" })}
                   </p>
                 )}
                 {!sub?.has_active_subscription && sub?.plan === "free" && (
-                  <p className="text-sm text-gray-500">Free plan — 1 report per year</p>
+                  <p className="text-sm text-gray-500">Free-plan — 1 rapport om året</p>
                 )}
               </div>
               <CreditCard className="w-8 h-8 text-gray-300" />
@@ -141,7 +146,7 @@ export default function BillingPage() {
                 className="btn-secondary mt-5 flex items-center gap-2"
               >
                 <ExternalLink className="w-4 h-4" />
-                {portalLoading ? "Opening…" : "Manage billing & invoices"}
+                {portalLoading ? "Åbner…" : "Administrer fakturering & fakturaer"}
               </button>
             )}
           </div>
@@ -149,27 +154,27 @@ export default function BillingPage() {
           {/* Upgrade options (if not pro) */}
           {sub?.plan !== "professional" && (
             <div className="card">
-              <h2 className="section-title">Upgrade your plan</h2>
+              <h2 className="section-title">Opgrader din plan</h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {sub?.plan === "free" && (
                   <div className="border border-green-200 bg-green-50 rounded-xl p-5">
                     <div className="flex items-center gap-2 mb-1">
                       <Zap className="w-4 h-4 text-green-600" />
                       <span className="font-bold text-gray-900">Starter</span>
-                      <span className="text-xs bg-green-500 text-white px-2 py-0.5 rounded-full font-bold">Most popular</span>
+                      <span className="text-xs bg-green-500 text-white px-2 py-0.5 rounded-full font-bold">Mest populær</span>
                     </div>
                     <div className="text-2xl font-black text-gray-900 mb-1">€49<span className="text-sm font-normal text-gray-500">/month</span></div>
                     <ul className="text-sm text-gray-600 space-y-1 mb-4">
-                      <li className="flex items-center gap-2"><CheckCircle className="w-3.5 h-3.5 text-green-500" /> 5 reports per year</li>
-                      <li className="flex items-center gap-2"><CheckCircle className="w-3.5 h-3.5 text-green-500" /> PDF export</li>
-                      <li className="flex items-center gap-2"><CheckCircle className="w-3.5 h-3.5 text-green-500" /> Data export (CSV/Excel)</li>
+                      <li className="flex items-center gap-2"><CheckCircle className="w-3.5 h-3.5 text-green-500" /> 5 rapporter om året</li>
+                      <li className="flex items-center gap-2"><CheckCircle className="w-3.5 h-3.5 text-green-500" /> PDF-eksport</li>
+                      <li className="flex items-center gap-2"><CheckCircle className="w-3.5 h-3.5 text-green-500" /> Dataeksport (CSV/Excel)</li>
                     </ul>
                     <button
                       onClick={() => checkout("starter")}
                       disabled={checkoutLoading === "starter"}
                       className="btn-primary w-full py-2.5 text-sm"
                     >
-                      {checkoutLoading === "starter" ? "Redirecting…" : "Upgrade to Starter →"}
+                      {checkoutLoading === "starter" ? "Omdirigerer…" : "Opgrader til Starter →"}
                     </button>
                   </div>
                 )}
@@ -180,44 +185,44 @@ export default function BillingPage() {
                   </div>
                   <div className="text-2xl font-black text-gray-900 mb-1">€149<span className="text-sm font-normal text-gray-500">/month</span></div>
                   <ul className="text-sm text-gray-600 space-y-1 mb-4">
-                    <li className="flex items-center gap-2"><CheckCircle className="w-3.5 h-3.5 text-green-500" /> Unlimited reports</li>
-                    <li className="flex items-center gap-2"><CheckCircle className="w-3.5 h-3.5 text-green-500" /> Priority support</li>
-                    <li className="flex items-center gap-2"><CheckCircle className="w-3.5 h-3.5 text-green-500" /> API access + white-label</li>
+                    <li className="flex items-center gap-2"><CheckCircle className="w-3.5 h-3.5 text-green-500" /> Ubegrænsede rapporter</li>
+                    <li className="flex items-center gap-2"><CheckCircle className="w-3.5 h-3.5 text-green-500" /> Prioriteret support</li>
+                    <li className="flex items-center gap-2"><CheckCircle className="w-3.5 h-3.5 text-green-500" /> API-adgang + white-label</li>
                   </ul>
                   <button
                     onClick={() => checkout("professional")}
                     disabled={checkoutLoading === "professional"}
                     className="btn-secondary w-full py-2.5 text-sm"
                   >
-                    {checkoutLoading === "professional" ? "Redirecting…" : "Go Professional →"}
+                    {checkoutLoading === "professional" ? "Omdirigerer…" : "Vælg Professional →"}
                   </button>
                 </div>
               </div>
-              <p className="text-xs text-gray-400 mt-4">Prices in EUR excl. VAT · Cancel anytime · Secure payment by Stripe</p>
+              <p className="text-xs text-gray-400 mt-4">Priser i EUR ekskl. moms · Opsig når som helst · Sikker betaling via Stripe</p>
             </div>
           )}
 
           {/* What's included in current plan */}
           <div className="card">
-            <h2 className="section-title">Plan features</h2>
+            <h2 className="section-title">Planfunktioner</h2>
             <div className="space-y-2.5">
               {[
-                { label: "Reports per year", value: sub?.plan === "professional" ? "Unlimited" : sub?.plan === "starter" ? "5" : "1" },
-                { label: "PDF report download", value: sub?.plan !== "free" },
-                { label: "CO₂ calculation (Scope 1/2/3)", value: true },
-                { label: "ESG score & A–E rating", value: true },
-                { label: "AI-written narratives", value: true },
-                { label: "Gap analysis & 12-month roadmap", value: true },
-                { label: "Data export (CSV/Excel)", value: sub?.plan !== "free" },
-                { label: "Priority support", value: sub?.plan === "professional" },
-                { label: "API access", value: sub?.plan === "professional" },
+                { label: "Rapporter om året", value: sub?.plan === "professional" ? "Ubegrænset" : sub?.plan === "starter" ? "5" : "1" },
+                { label: "PDF-rapport download", value: sub?.plan !== "free" },
+                { label: "CO₂-beregning (Scope 1/2/3)", value: true },
+                { label: "ESG-score & A–E-vurdering", value: true },
+                { label: "AI-skrevne tekster", value: true },
+                { label: "Gap-analyse & 12-måneders handlingsplan", value: true },
+                { label: "Dataeksport (CSV/Excel)", value: sub?.plan !== "free" },
+                { label: "Prioriteret support", value: sub?.plan === "professional" },
+                { label: "API-adgang", value: sub?.plan === "professional" },
               ].map(f => (
                 <div key={f.label} className="flex items-center justify-between py-2 border-b border-gray-50 last:border-0">
                   <span className="text-sm text-gray-700">{f.label}</span>
                   {typeof f.value === "boolean" ? (
                     f.value
                       ? <CheckCircle className="w-4 h-4 text-green-500" />
-                      : <span className="text-xs text-gray-300 font-medium">Not included</span>
+                      : <span className="text-xs text-gray-300 font-medium">Ikke inkluderet</span>
                   ) : (
                     <span className="text-sm font-semibold text-gray-900">{f.value}</span>
                   )}
