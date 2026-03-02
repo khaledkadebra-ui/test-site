@@ -185,7 +185,7 @@ export async function createPortalSession() {
 // ── Materiality Assessment ─────────────────────────────────────────────────────
 
 export async function runMaterialityAssessment(companyId: string) {
-  const { data } = await api.post(`/companies/${companyId}/materiality`)
+  const { data } = await api.post(`/companies/${companyId}/materiality`, undefined, { timeout: 60000 })
   return data
 }
 

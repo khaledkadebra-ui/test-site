@@ -138,8 +138,19 @@ export default function MaterialityPage() {
       const data = await runMaterialityAssessment(companyId)
       setAssessment(data)
     } catch (err: unknown) {
-      const e = err as { response?: { data?: { detail?: string } } }
-      setError(e?.response?.data?.detail || "AI-analyse mislykkedes — prøv igen om lidt")
+      const e = err as { response?: { data?: { detail?: string }; status?: number }; code?: string; message?: string }
+      const detail = e?.response?.data?.detail
+      const status = e?.response?.status
+      const code = e?.code  // e.g. "ECONNABORTED" for timeout
+      if (code === "ECONNABORTED") {
+        setError("Anmodningen tog for lang tid — serveren er travl. Prøv igen om et øjeblik.")
+      } else if (detail) {
+        setError(detail)
+      } else if (status) {
+        setError(`AI-analyse mislykkedes (HTTP ${status}) — prøv igen om lidt`)
+      } else {
+        setError("AI-analyse mislykkedes — prøv igen om lidt")
+      }
     } finally {
       setRunning(false)
     }

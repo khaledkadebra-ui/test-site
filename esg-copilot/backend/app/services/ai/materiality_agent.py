@@ -143,7 +143,9 @@ async def run_materiality_assessment(
     if not api_key:
         raise RuntimeError("ANTHROPIC_API_KEY not set")
 
-    model = os.environ.get("ANTHROPIC_MODEL", "claude-sonnet-4-6")
+    # Use Haiku for materiality classification — it's 3-5x faster and perfectly
+    # capable of this structured classification task (avoids HTTP proxy timeouts).
+    model = "claude-haiku-4-5-20251001"
     client = anthropic.AsyncAnthropic(api_key=api_key)
 
     # Build the list of datapoints for Claude to assess
@@ -186,14 +188,14 @@ Returner PRÆCIS dette JSON-format (ingen markdown, ingen forklaring udenfor JSO
         industry_code, size_label, country_code,
     )
 
-    # Claude call with retry
+    # Claude call with retry — keep delays short to avoid Railway proxy timeout
     import asyncio
     last_err = None
-    for attempt in range(1, 5):
+    for attempt in range(1, 4):
         try:
             response = await client.messages.create(
                 model=model,
-                max_tokens=4000,
+                max_tokens=8000,   # Haiku supports 8192; generous headroom for 50 fields
                 temperature=0.2,   # Low temp for consistent classification
                 system=_SYSTEM,
                 messages=[{"role": "user", "content": user_prompt}],
@@ -203,7 +205,7 @@ Returner PRÆCIS dette JSON-format (ingen markdown, ingen forklaring udenfor JSO
         except (anthropic.RateLimitError, anthropic.InternalServerError) as e:
             logger.warning("Materiality agent attempt %d failed: %s", attempt, e)
             last_err = e
-            await asyncio.sleep(5 * attempt)
+            await asyncio.sleep(2 * attempt)   # 2s, 4s max — not 5/10/15s
     else:
         raise RuntimeError(f"Materiality agent failed after retries: {last_err}")
 

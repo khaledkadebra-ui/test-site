@@ -59,50 +59,53 @@ async def run_assessment(company_id: UUID, current_user: CurrentUser, db: DB):
     """
     _assert_access(current_user, company_id)
 
-    # Load company
-    result = await db.execute(select(Company).where(Company.id == company_id))
-    company = result.scalar_one_or_none()
-    if not company:
-        raise HTTPException(status_code=404, detail="Company not found")
-
-    # Check for a valid cached assessment
-    cached = await _get_latest(db, company_id)
-    if cached and _is_cache_valid(cached, company):
-        logger.info("Returning cached materiality assessment for company %s", company_id)
-        return _assessment_out(cached)
-
-    # Run the agent
-    logger.info("Running fresh materiality assessment for company %s (industry=%s)", company_id, company.industry_code)
     try:
+        # Load company
+        result = await db.execute(select(Company).where(Company.id == company_id))
+        company = result.scalar_one_or_none()
+        if not company:
+            raise HTTPException(status_code=404, detail="Virksomhed ikke fundet")
+
+        # Check for a valid cached assessment
+        cached = await _get_latest(db, company_id)
+        if cached and _is_cache_valid(cached, company):
+            logger.info("Returning cached materiality assessment for company %s", company_id)
+            return _assessment_out(cached)
+
+        # Run the agent
+        logger.info("Running fresh materiality assessment for company %s (industry=%s)", company_id, company.industry_code)
         mat_result = await run_materiality_assessment(
-            industry_code=company.industry_code,
+            industry_code=company.industry_code or "technology",
             employee_count=company.employee_count,
             revenue_eur=float(company.revenue_eur) if company.revenue_eur else None,
-            country_code=company.country_code,
+            country_code=company.country_code or "DK",
         )
+
+        # Persist result
+        ma = MaterialityAssessment(
+            company_id=company_id,
+            industry_code=company.industry_code,
+            employee_count=company.employee_count,
+            revenue_eur=company.revenue_eur,
+            country_code=company.country_code,
+            assessment=mat_result["assessment"],
+            model_used=mat_result["model_used"],
+            prompt_version=mat_result["prompt_version"],
+        )
+        db.add(ma)
+        await db.commit()
+        await db.refresh(ma)
+
+        return _assessment_out(ma)
+
+    except HTTPException:
+        raise
     except Exception as e:
-        logger.error("Materiality agent failed for company %s: %s", company_id, e)
+        logger.error("Materiality assessment failed for company %s: %s", company_id, e, exc_info=True)
         raise HTTPException(
             status_code=503,
-            detail="Materialitetsvurdering mislykkedes — prøv igen om et øjeblik.",
+            detail=f"Materialitetsvurdering mislykkedes — {type(e).__name__}: {str(e)[:200]}",
         )
-
-    # Persist result
-    ma = MaterialityAssessment(
-        company_id=company_id,
-        industry_code=company.industry_code,
-        employee_count=company.employee_count,
-        revenue_eur=company.revenue_eur,
-        country_code=company.country_code,
-        assessment=mat_result["assessment"],
-        model_used=mat_result["model_used"],
-        prompt_version=mat_result["prompt_version"],
-    )
-    db.add(ma)
-    await db.commit()
-    await db.refresh(ma)
-
-    return _assessment_out(ma)
 
 
 @router.get(
