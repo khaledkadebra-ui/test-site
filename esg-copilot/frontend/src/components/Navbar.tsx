@@ -5,9 +5,9 @@ import { usePathname, useRouter } from "next/navigation"
 import { Leaf, Menu, X, ChevronDown } from "lucide-react"
 
 const NAV_LINKS = [
-  { label: "Features", href: "/#features" },
-  { label: "How it works", href: "/#how-it-works" },
-  { label: "Pricing", href: "/pricing" },
+  { label: "Funktioner", href: "/#features" },
+  { label: "Sådan virker det", href: "/#how-it-works" },
+  { label: "Priser", href: "/pricing" },
 ]
 
 export default function Navbar() {
@@ -60,15 +60,15 @@ export default function Navbar() {
         <div className="hidden md:flex items-center gap-3">
           {loggedIn ? (
             <Link href="/dashboard" className="btn-primary text-sm py-2 px-4">
-              Go to dashboard →
+              Gå til dashboard →
             </Link>
           ) : (
             <>
               <Link href="/login" className="text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors">
-                Sign in
+                Log ind
               </Link>
               <Link href="/register" className="btn-primary text-sm py-2 px-4">
-                Get started free
+                Start gratis
               </Link>
             </>
           )}
@@ -99,12 +99,12 @@ export default function Navbar() {
           <div className="pt-3 border-t border-gray-100 flex flex-col gap-2">
             {loggedIn ? (
               <Link href="/dashboard" className="btn-primary text-sm text-center py-2.5">
-                Go to dashboard →
+                Gå til dashboard →
               </Link>
             ) : (
               <>
-                <Link href="/login" className="btn-secondary text-sm text-center py-2.5">Sign in</Link>
-                <Link href="/register" className="btn-primary text-sm text-center py-2.5">Get started free</Link>
+                <Link href="/login" className="btn-secondary text-sm text-center py-2.5">Log ind</Link>
+                <Link href="/register" className="btn-primary text-sm text-center py-2.5">Start gratis</Link>
               </>
             )}
           </div>

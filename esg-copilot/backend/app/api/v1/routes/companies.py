@@ -1,16 +1,21 @@
 """
 Company routes — ESG Copilot
 POST   /companies
+GET    /companies/cvr-lookup        CVR auto-fill (Danish Central Business Register)
 GET    /companies/{id}
 PATCH  /companies/{id}
 POST   /companies/{id}/submissions
 GET    /companies/{id}/submissions
 """
 
+import logging
 from uuid import UUID
 
-from fastapi import APIRouter, HTTPException, Request, status
+import httpx
+from fastapi import APIRouter, HTTPException, Query, Request, status
 from sqlalchemy import select
+
+logger = logging.getLogger(__name__)
 
 from app.core.deps import CurrentUser, DB
 from app.models.audit_log import AuditLog
@@ -20,6 +25,67 @@ from app.models.user import User
 from app.schemas.company import CompanyCreate, CompanyOut, CompanyUpdate, SubmissionCreate, SubmissionOut
 
 router = APIRouter()
+
+
+# ── CVR Lookup ─────────────────────────────────────────────────────────────────
+
+_INDUSTRY_MAP = {
+    "Fremstilling":          "manufacturing",
+    "Handel og service":     "retail",
+    "Byggeri og anlæg":      "construction",
+    "Transport":             "logistics",
+    "Landbrug, skovbrug og fiskeri": "agriculture",
+    "Hotel og restauration": "hospitality",
+    "Sundhed og social":     "healthcare",
+    "Finans og forsikring":  "finance",
+    "IT og telekommunikation": "technology",
+}
+
+
+@router.get("/cvr-lookup")
+async def cvr_lookup(cvr: str = Query(..., min_length=8, max_length=10)):
+    """
+    Look up a Danish company by CVR number using the free cvrapi.dk API.
+    Returns company name, industry, employee count, city, and country.
+    No auth required (used during company setup before token is stored).
+    """
+    cvr_clean = cvr.replace(" ", "").replace("-", "")
+    try:
+        async with httpx.AsyncClient(timeout=8.0) as client:
+            resp = await client.get(
+                "https://cvrapi.dk/api",
+                params={"search": cvr_clean, "country": "dk"},
+                headers={"User-Agent": "ESG-Copilot/1.0 (support@esgcopilot.dk)"},
+            )
+            if resp.status_code == 404:
+                raise HTTPException(status_code=404, detail="CVR-nummer ikke fundet")
+            resp.raise_for_status()
+            data = resp.json()
+    except httpx.TimeoutException:
+        raise HTTPException(status_code=503, detail="CVR-opslag timeout — prøv igen")
+    except HTTPException:
+        raise
+    except Exception as exc:
+        logger.warning("CVR lookup failed for %s: %s", cvr_clean, exc)
+        raise HTTPException(status_code=503, detail="CVR-opslag utilgængeligt")
+
+    # Map cvrapi industry description → our industry_code
+    raw_industry = data.get("industrydesc", "") or ""
+    industry_code = "technology"  # default
+    for dk_name, code in _INDUSTRY_MAP.items():
+        if dk_name.lower() in raw_industry.lower():
+            industry_code = code
+            break
+
+    return {
+        "name":           data.get("name", ""),
+        "cvr":            cvr_clean,
+        "industry_code":  industry_code,
+        "industry_desc":  raw_industry,
+        "city":           data.get("city", ""),
+        "country_code":   "DK",
+        "employee_count": data.get("employees") or None,
+    }
 
 
 def _company_out(c: Company) -> CompanyOut:

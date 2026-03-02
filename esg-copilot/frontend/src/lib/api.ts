@@ -55,6 +55,14 @@ export function logout() {
 
 // ── Companies ─────────────────────────────────────────────────────────────────
 
+export async function cvrLookup(cvr: string) {
+  const { data } = await api.get("/companies/cvr-lookup", { params: { cvr } })
+  return data as {
+    name: string; cvr: string; industry_code: string; industry_desc: string;
+    city: string; country_code: string; employee_count: number | null;
+  }
+}
+
 export async function createCompany(payload: Record<string, unknown>) {
   const { data } = await api.post("/companies", payload)
   return data
@@ -216,6 +224,72 @@ export async function extractDocument(
 
 export async function listDocuments() {
   const { data } = await api.get("/documents")
+  return data
+}
+
+// ── Agent / AI Coach ───────────────────────────────────────────────────────────
+
+export interface ChatMessage { role: "user" | "assistant"; content: string }
+
+export async function agentChat(
+  message: string,
+  history: ChatMessage[] = [],
+  context: Record<string, unknown> = {}
+) {
+  const { data } = await api.post("/agent/chat", { message, history, context })
+  return data as { response: string; ok: boolean }
+}
+
+export async function agentAnalyze(
+  userMessage: string,
+  context: Record<string, unknown> = {},
+  history: Array<Record<string, unknown>> = []
+) {
+  const { data } = await api.post("/agent/analyze", {
+    user_message: userMessage,
+    context,
+    history,
+  })
+  return data as { answer: string; trace: unknown[]; ok: boolean }
+}
+
+export async function agentCompliance(submissionData: Record<string, unknown>, industryCode = "technology") {
+  const { data } = await api.post("/agent/compliance", {
+    submission_data: submissionData,
+    industry_code: industryCode,
+  })
+  return data
+}
+
+export async function agentClimateRisk(params: {
+  industry_code: string; country_code?: string;
+  scope1_co2e?: number; scope2_co2e?: number; scope3_co2e?: number;
+}) {
+  const { data } = await api.post("/agent/climate-risk", params)
+  return data
+}
+
+export async function agentBenchmark(params: {
+  industry_code: string; esg_score_total: number;
+  total_co2e_tonnes?: number; employee_count?: number;
+}) {
+  const { data } = await api.post("/agent/benchmark", params)
+  return data
+}
+
+export async function agentImprove(params: {
+  esg_score_total: number; gap_areas: string[];
+  esg_score_e?: number; esg_score_s?: number; esg_score_g?: number;
+  industry_code?: string;
+}) {
+  const { data } = await api.post("/agent/improve", params)
+  return data
+}
+
+export async function agentRoadmap(params: {
+  improvement_actions: string[]; reporting_year?: number; company_size?: string;
+}) {
+  const { data } = await api.post("/agent/roadmap", params)
   return data
 }
 

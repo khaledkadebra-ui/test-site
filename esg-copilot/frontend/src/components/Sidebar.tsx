@@ -6,6 +6,7 @@ import {
   LayoutDashboard, Wind, Target, FileText, TrendingUp,
   Upload, Settings, CreditCard, LogOut, Leaf, Zap, Microscope
 } from "lucide-react"
+import ChatWidget from "./ChatWidget"
 
 interface SidebarProps {
   companyName?: string
@@ -40,7 +41,7 @@ const NAV_GROUPS = [
   },
 ]
 
-export default function Sidebar({ companyName, userEmail, subscriptionPlan }: SidebarProps) {
+export default function Sidebar({ companyName, userEmail, subscriptionPlan, chatContext }: SidebarProps & { chatContext?: Record<string, unknown> }) {
   const pathname = usePathname()
 
   const planLabel = { free: "Free", starter: "Starter", professional: "Pro" }[subscriptionPlan || "free"] || "Free"
@@ -129,6 +130,9 @@ export default function Sidebar({ companyName, userEmail, subscriptionPlan }: Si
           Log ud
         </button>
       </div>
+
+      {/* Floating ESG Coach chat widget — rendered outside sidebar stacking context */}
+      <ChatWidget context={chatContext} />
     </aside>
   )
 }

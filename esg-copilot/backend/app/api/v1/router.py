@@ -2,7 +2,7 @@
 
 from fastapi import APIRouter
 
-from app.api.v1.routes import auth, companies, submissions, documents, reports, billing, materiality
+from app.api.v1.routes import auth, companies, submissions, documents, reports, billing, materiality, agent
 
 api_router = APIRouter()
 
@@ -13,3 +13,4 @@ api_router.include_router(documents.router,   prefix="/documents",   tags=["docu
 api_router.include_router(reports.router,     prefix="/reports",     tags=["reports"])
 api_router.include_router(billing.router,     prefix="/billing",     tags=["billing"])
 api_router.include_router(materiality.router, prefix="",             tags=["materiality"])
+api_router.include_router(agent.router,       prefix="/agent",       tags=["agents"])

@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
-import { getMe, getCompany, listSubmissions, listReports, getReport, createCompany, createSubmission, getCompleteness } from "@/lib/api"
+import { getMe, getCompany, listSubmissions, listReports, getReport, createCompany, createSubmission, getCompleteness, cvrLookup } from "@/lib/api"
 import api from "@/lib/api"
 import Sidebar from "@/components/Sidebar"
 import {
@@ -191,6 +191,9 @@ export default function DashboardPage() {
   const [showCompanyForm, setShowCompanyForm] = useState(false)
   const [companyForm, setCompanyForm] = useState({ name: "", industry_code: "technology", country_code: "DK", employee_count: 10, revenue_eur: 1000000 })
   const [companyError, setCompanyError] = useState("")
+  const [cvrInput, setCvrInput] = useState("")
+  const [cvrLooking, setCvrLooking] = useState(false)
+  const [cvrMsg, setCvrMsg] = useState<{ text: string; ok: boolean } | null>(null)
   const [loading, setLoading] = useState(true)
   const [creating, setCreating] = useState(false)
   const [verifyBanner, setVerifyBanner] = useState(false)
@@ -258,6 +261,27 @@ export default function DashboardPage() {
     }
   }
 
+  async function handleCvrLookup() {
+    if (cvrInput.replace(/\D/g, "").length < 8) return
+    setCvrLooking(true)
+    setCvrMsg(null)
+    try {
+      const r = await cvrLookup(cvrInput)
+      setCompanyForm(f => ({
+        ...f,
+        name:          r.name || f.name,
+        industry_code: r.industry_code || f.industry_code,
+        country_code:  r.country_code  || f.country_code,
+        employee_count: r.employee_count ?? f.employee_count,
+      }))
+      setCvrMsg({ text: `Fandt: ${r.name} (${r.city || r.country_code})`, ok: true })
+    } catch {
+      setCvrMsg({ text: "CVR-nummer ikke fundet — udfyld oplysningerne manuelt", ok: false })
+    } finally {
+      setCvrLooking(false)
+    }
+  }
+
   async function handleNewSubmission() {
     if (!company) return
     const year = new Date().getFullYear() - 1
@@ -322,6 +346,34 @@ export default function DashboardPage() {
                 <p className="text-gray-500 text-sm mt-2">Tager ca. 30 sekunder — du er derefter klar til din første ESG-rapport</p>
               </div>
               <div className="card">
+                {/* CVR Auto-fill */}
+                <div className="mb-6 pb-6 border-b border-gray-100">
+                  <label className="label">CVR-nummer (valgfrit — auto-udfylder dine oplysninger)</label>
+                  <div className="flex gap-2">
+                    <input
+                      className="input flex-1"
+                      placeholder="12345678"
+                      value={cvrInput}
+                      maxLength={10}
+                      onChange={e => { setCvrInput(e.target.value); setCvrMsg(null) }}
+                      onKeyDown={e => e.key === "Enter" && (e.preventDefault(), handleCvrLookup())}
+                    />
+                    <button
+                      type="button"
+                      onClick={handleCvrLookup}
+                      disabled={cvrLooking || cvrInput.replace(/\D/g, "").length < 8}
+                      className="btn-secondary px-4 text-sm font-semibold whitespace-nowrap disabled:opacity-40"
+                    >
+                      {cvrLooking ? <span className="w-4 h-4 border-2 border-gray-400 border-t-transparent rounded-full animate-spin inline-block" /> : "Slå op"}
+                    </button>
+                  </div>
+                  {cvrMsg && (
+                    <p className={`text-xs mt-1.5 font-medium ${cvrMsg.ok ? "text-green-600" : "text-amber-600"}`}>
+                      {cvrMsg.text}
+                    </p>
+                  )}
+                </div>
+
                 <form onSubmit={handleCreateCompany} className="grid grid-cols-2 gap-5">
                   <div className="col-span-2">
                     <label className="label">Virksomhedsnavn</label>

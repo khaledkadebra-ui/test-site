@@ -24,8 +24,8 @@ const FEATURES = [
   {
     icon: Zap,
     color: "bg-purple-50 text-purple-600",
-    title: "AI-skrevne rapportafsnit",
-    desc: "AI skriver din ledelsesoversigt, CO₂-analyse, ESG-vurdering og foreslåede tiltag — på professionelt dansk med VSME-terminologi.",
+    title: "13 AI-agenter i samspil",
+    desc: "Vores orchestrerede agent-system koordinerer compliance-check, klimarisikovurdering, branchebenchmark og SMART-handlingsplaner i én sammenhængende analyse.",
   },
   {
     icon: Download,
@@ -36,14 +36,14 @@ const FEATURES = [
   {
     icon: Target,
     color: "bg-red-50 text-red-600",
-    title: "Foreslåede tiltag & forbedringer",
-    desc: "Identificer dine svageste ESG-områder og modtag en prioriteret handlingsplan med SMART-mål, KPI'er og estimeret CO₂-reduktion.",
+    title: "CVR-opslag & auto-udfyldning",
+    desc: "Indtast dit CVR-nummer og vores system henter automatisk navn, branche og medarbejderantal fra CVR-registret — ingen manuel indtastning.",
   },
   {
     icon: Clock,
     color: "bg-amber-50 text-amber-600",
-    title: "Færdig på under 30 minutter",
-    desc: "Vores guidede VSME-wizard fører dig trin-for-trin igennem alle nødvendige datapunkter. De fleste virksomheder er færdige på under 30 minutter.",
+    title: "Dansk ESG Coach 24/7",
+    desc: "Få svar på alle dine ESG-spørgsmål med det samme. Vores AI Coach forklarer VSME, CSRD og bæredygtighedsstrategi på letforståeligt dansk.",
   },
 ]
 
@@ -93,10 +93,10 @@ const TESTIMONIALS = [
 ]
 
 const STATS = [
-  { value: "500+", label: "Rapporter genereret" },
-  { value: "2024", label: "Emissionsfaktorer (DK)" },
-  { value: "<30 min", label: "Gennemsnitlig udfyldningstid" },
-  { value: "VSME", label: "Standardoverensstemmelse" },
+  { value: "13", label: "Specialiserede AI-agenter" },
+  { value: "2024", label: "DEFRA-emissionsfaktorer" },
+  { value: "<30 min", label: "Fra CVR til færdig rapport" },
+  { value: "VSME", label: "EFRAG-standardoverensstemmelse" },
 ]
 
 export default function HomePage() {

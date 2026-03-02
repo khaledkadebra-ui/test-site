@@ -25,6 +25,9 @@ redis==5.2.1
 # ── Anthropic Claude ─────────────────────────────────────────────────────────
 anthropic==0.45.0
 
+# ── HTTP client (CVR lookup, web scraping) ────────────────────────────────────
+httpx==0.28.1
+
 # ── Document Processing ──────────────────────────────────────────────────────
 pypdf2==3.0.1
 openpyxl==3.1.5

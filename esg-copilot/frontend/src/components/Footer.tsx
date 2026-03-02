@@ -2,19 +2,19 @@ import Link from "next/link"
 import { Leaf } from "lucide-react"
 
 const LINKS = {
-  Product: [
-    { label: "Features", href: "/#features" },
-    { label: "How it works", href: "/#how-it-works" },
-    { label: "Pricing", href: "/pricing" },
+  Produkt: [
+    { label: "Funktioner", href: "/#features" },
+    { label: "Sådan virker det", href: "/#how-it-works" },
+    { label: "Priser", href: "/pricing" },
   ],
-  Legal: [
-    { label: "Privacy Policy", href: "/privacy" },
-    { label: "Terms of Service", href: "/terms" },
+  Juridisk: [
+    { label: "Privatlivspolitik", href: "/privacy" },
+    { label: "Servicevilkår", href: "/terms" },
     { label: "GDPR", href: "/gdpr" },
   ],
-  Company: [
-    { label: "About", href: "/about" },
-    { label: "Contact", href: "mailto:hello@esg-copilot.com" },
+  Virksomhed: [
+    { label: "Om os", href: "/about" },
+    { label: "Kontakt", href: "mailto:hello@esg-copilot.com" },
     { label: "Dashboard", href: "/dashboard" },
   ],
 }
@@ -33,11 +33,11 @@ export default function Footer() {
               <span className="font-bold text-lg">ESG Copilot</span>
             </div>
             <p className="text-slate-400 text-sm leading-relaxed mb-4">
-              AI-powered ESG reporting for modern businesses. Generate VSME-compliant reports in under 30 minutes.
+              AI-drevet ESG-rapportering til moderne virksomheder. Generer VSME-kompatible rapporter på under 30 minutter.
             </p>
             <div className="flex gap-3">
-              <span className="text-xs bg-white/10 px-2.5 py-1 rounded-full text-slate-300">GDPR Compliant</span>
-              <span className="text-xs bg-white/10 px-2.5 py-1 rounded-full text-slate-300">EU Data</span>
+              <span className="text-xs bg-white/10 px-2.5 py-1 rounded-full text-slate-300">GDPR-kompatibel</span>
+              <span className="text-xs bg-white/10 px-2.5 py-1 rounded-full text-slate-300">EU-data</span>
             </div>
           </div>
 
@@ -62,13 +62,13 @@ export default function Footer() {
         </div>
 
         <div className="border-t border-white/10 pt-8 flex flex-col md:flex-row items-center justify-between gap-4">
-          <p className="text-slate-500 text-sm">© 2025 ESG Copilot. All rights reserved.</p>
+          <p className="text-slate-500 text-sm">© 2025 ESG Copilot. Alle rettigheder forbeholdes.</p>
           <div className="flex items-center gap-6 text-slate-500 text-xs">
-            <span>DEFRA 2023 Emission Factors</span>
+            <span>DEFRA 2024 Emissionsfaktorer</span>
             <span>·</span>
-            <span>VSME Ready</span>
+            <span>VSME Basic Modul</span>
             <span>·</span>
-            <span>ISO 14064 Aligned</span>
+            <span>ISO 14064 Tilpasset</span>
           </div>
         </div>
       </div>
