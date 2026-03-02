@@ -1,10 +1,10 @@
 "use client"
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
-import { getMe, getCompany, listReports, getReport } from "@/lib/api"
+import { getMe, getCompany, listReports, getReport, agentBenchmark, agentClimateRisk } from "@/lib/api"
 import Sidebar from "@/components/Sidebar"
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid } from "recharts"
-import { Wind, AlertCircle } from "lucide-react"
+import { Wind, AlertCircle, Loader2, BarChart3, TrendingUp, Flame } from "lucide-react"
 
 const SCOPE_COLORS = ["#f97316", "#eab308", "#a855f7"]
 
@@ -22,11 +22,17 @@ const LABELS: Record<string, string> = {
 export default function CO2Page() {
   const router = useRouter()
   const [report, setReport] = useState<Record<string, unknown> | null>(null)
+  const [company, setCompany] = useState<{ name: string; industry_code: string; country_code: string; employee_count: number } | null>(null)
   const [loading, setLoading] = useState(true)
   const [companyName, setCompanyName] = useState("")
   const [userEmail, setUserEmail] = useState("")
   const [plan, setPlan] = useState("")
   const [noReport, setNoReport] = useState(false)
+
+  // Agent analysis state
+  const [benchmark, setBenchmark] = useState<Record<string, unknown> | null>(null)
+  const [climateRisk, setClimateRisk] = useState<Record<string, unknown> | null>(null)
+  const [agentLoading, setAgentLoading] = useState(false)
 
   useEffect(() => { load() }, [])
 
@@ -38,6 +44,7 @@ export default function CO2Page() {
       if (!me.company_id) { setNoReport(true); setLoading(false); return }
       const c = await getCompany(me.company_id)
       setCompanyName(c.name)
+      setCompany(c)
       const reports = await listReports()
       const completed = reports.filter((rep: { status: string }) => rep.status === "completed")
       if (!completed.length) { setNoReport(true); setLoading(false); return }
@@ -46,6 +53,33 @@ export default function CO2Page() {
       else setNoReport(true)
     } catch { router.push("/login") }
     finally { setLoading(false) }
+  }
+
+  async function runAgentAnalysis() {
+    if (!report || !company) return
+    setAgentLoading(true)
+    try {
+      const r = report as { esg_score_total: number; total_co2e_tonnes: number; scope1_co2e_tonnes: number; scope2_co2e_tonnes: number; scope3_co2e_tonnes: number }
+      const [bench, risk] = await Promise.all([
+        agentBenchmark({
+          industry_code: company.industry_code,
+          esg_score_total: r.esg_score_total,
+          total_co2e_tonnes: r.total_co2e_tonnes,
+          employee_count: company.employee_count,
+        }).catch(() => null),
+        agentClimateRisk({
+          industry_code: company.industry_code,
+          country_code: company.country_code,
+          scope1_co2e: r.scope1_co2e_tonnes,
+          scope2_co2e: r.scope2_co2e_tonnes,
+          scope3_co2e: r.scope3_co2e_tonnes,
+        }).catch(() => null),
+      ])
+      if (bench) setBenchmark(bench)
+      if (risk) setClimateRisk(risk)
+    } finally {
+      setAgentLoading(false)
+    }
   }
 
   if (loading) return <PageShell companyName={companyName} userEmail={userEmail} plan={plan}><Loading /></PageShell>
@@ -183,8 +217,86 @@ export default function CO2Page() {
           )
         })}
 
+        {/* AI Agent Analysis Panel */}
+        {!benchmark && !climateRisk && (
+          <div className="bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-200 rounded-2xl p-5 flex items-center justify-between">
+            <div>
+              <div className="font-semibold text-emerald-900 text-sm">AI Benchmark & Klimarisikoanalyse</div>
+              <div className="text-xs text-emerald-700 mt-0.5">Sammenlign med branchepeer og få klimarisikovurdering for din sektor</div>
+            </div>
+            <button
+              onClick={runAgentAnalysis}
+              disabled={agentLoading}
+              className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold px-4 py-2 rounded-xl transition disabled:opacity-60"
+            >
+              {agentLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <BarChart3 className="w-4 h-4" />}
+              {agentLoading ? "Analyserer..." : "Kør AI-analyse"}
+            </button>
+          </div>
+        )}
+
+        {benchmark && (
+          <div className="card">
+            <h2 className="section-title flex items-center gap-2"><TrendingUp className="w-4 h-4 text-emerald-600" /> Branche-benchmark</h2>
+            <div className="grid grid-cols-3 gap-4 mb-4">
+              <div className="text-center bg-gray-50 rounded-xl p-3">
+                <div className="text-2xl font-bold text-gray-900">{benchmark.esg_percentile as number}.</div>
+                <div className="text-xs text-gray-500 mt-0.5">percentil (ESG)</div>
+              </div>
+              <div className="text-center bg-gray-50 rounded-xl p-3">
+                <div className={`text-2xl font-bold ${(benchmark.esg_vs_avg as number) >= 0 ? "text-emerald-600" : "text-red-500"}`}>
+                  {(benchmark.esg_vs_avg as number) >= 0 ? "+" : ""}{benchmark.esg_vs_avg as number}
+                </div>
+                <div className="text-xs text-gray-500 mt-0.5">vs. branchegennemsnit</div>
+              </div>
+              <div className="text-center bg-gray-50 rounded-xl p-3">
+                <div className={`text-2xl font-bold ${(benchmark.co2_vs_avg_pct as number) <= 0 ? "text-emerald-600" : "text-amber-600"}`}>
+                  {(benchmark.co2_vs_avg_pct as number) > 0 ? "+" : ""}{benchmark.co2_vs_avg_pct as number}%
+                </div>
+                <div className="text-xs text-gray-500 mt-0.5">CO₂/mda. vs. snit</div>
+              </div>
+            </div>
+            <p className="text-sm text-gray-600 leading-relaxed">{benchmark.summary as string}</p>
+          </div>
+        )}
+
+        {climateRisk && (
+          <div className="card">
+            <h2 className="section-title flex items-center gap-2">
+              <Flame className="w-4 h-4 text-orange-500" /> Klimarisikovurdering
+              <span className={`ml-auto text-xs font-bold px-2.5 py-0.5 rounded-full ${
+                (climateRisk.risk_level as string) === "Høj" ? "bg-red-100 text-red-700" :
+                (climateRisk.risk_level as string) === "Moderat" ? "bg-amber-100 text-amber-700" :
+                "bg-green-100 text-green-700"}`}>
+                {climateRisk.risk_level as string} risiko
+              </span>
+            </h2>
+            <div className="grid grid-cols-2 gap-4 mb-4">
+              <div>
+                <div className="text-xs text-gray-500 mb-1 font-semibold">Fysisk risiko</div>
+                <div className="flex items-center gap-2">
+                  <div className="flex-1 h-2 bg-gray-100 rounded-full overflow-hidden">
+                    <div className="h-full bg-orange-400 rounded-full" style={{ width: `${(climateRisk.physical_score as number) * 10}%` }} />
+                  </div>
+                  <span className="text-sm font-bold text-gray-700">{climateRisk.physical_score as number}/10</span>
+                </div>
+              </div>
+              <div>
+                <div className="text-xs text-gray-500 mb-1 font-semibold">Transitionsrisiko</div>
+                <div className="flex items-center gap-2">
+                  <div className="flex-1 h-2 bg-gray-100 rounded-full overflow-hidden">
+                    <div className="h-full bg-purple-400 rounded-full" style={{ width: `${(climateRisk.transition_score as number) * 10}%` }} />
+                  </div>
+                  <span className="text-sm font-bold text-gray-700">{climateRisk.transition_score as number}/10</span>
+                </div>
+              </div>
+            </div>
+            <p className="text-sm text-gray-600 leading-relaxed whitespace-pre-wrap">{climateRisk.narrative as string}</p>
+          </div>
+        )}
+
         <div className="text-xs text-gray-400 bg-white border border-gray-100 rounded-xl p-4 leading-relaxed">
-          <strong className="text-gray-500">Emissionsfaktorer:</strong> Energistyrelsen 2024 (el DK: 0,136 kg CO₂e/kWh), DEFRA 2023 (transport, brændstoffer), IEA 2023 (øvrige lande). Beregnet iht. GHG Protocol Corporate Standard.
+          <strong className="text-gray-500">Emissionsfaktorer:</strong> Energistyrelsen 2024 (el DK: 0,136 kg CO₂e/kWh), DEFRA 2024 (transport, brændstoffer), IEA 2024 (øvrige lande). Beregnet iht. GHG Protocol Corporate Standard.
         </div>
       </div>
     </PageShell>

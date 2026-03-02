@@ -165,6 +165,63 @@ _TOOLS: list[dict] = [
             "required": ["cvr"],
         },
     },
+    {
+        "name": "calculate_ghg_emissions",
+        "description": (
+            "Beregner CO2-aftryk (Scope 1, 2 og 3) ud fra virksomhedens energi- og aktivitetsdata. "
+            "Anvender DEFRA 2024 og Energistyrelsen 2024 emissionsfaktorer. "
+            "Returnerer full breakdown + anomalier og kommentarer."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "scope1":         {"type": "object", "description": "Scope 1 data (natural_gas, diesel, company_car_km, osv.)"},
+                "scope2":         {"type": "object", "description": "Scope 2 data (electricity_kwh, district_heating_kwh, country_code)"},
+                "scope3":         {"type": "object", "description": "Scope 3 data (employee_count, avg_commute_km_one_way, osv.)"},
+                "employee_count": {"type": "integer"},
+                "industry_code":  {"type": "string"},
+            },
+            "required": [],
+        },
+    },
+    {
+        "name": "run_materiality_assessment",
+        "description": (
+            "Udfører en dobbelt væsentlighedsanalyse (double materiality) af VSME-datapunkter "
+            "for virksomhedens branche og profil. Klassificerer alle ~50 datapunkter som "
+            "obligatorisk / anbefalet / ikke-relevant."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "industry_code":  {"type": "string"},
+                "employee_count": {"type": "integer"},
+                "country_code":   {"type": "string"},
+                "revenue_eur":    {"type": "number"},
+            },
+            "required": ["industry_code"],
+        },
+    },
+    {
+        "name": "write_report_sections",
+        "description": (
+            "Genererer alle narrative afsnit til VSME-bæredygtighedsrapporten på professionelt dansk. "
+            "Kræver pre-beregnede CO2-data og ESG-scorer. "
+            "Returnerer resumé, CO2-narrativ, ESG-narrativ, socialt afsnit og ledelsesafsnit."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "company_name":    {"type": "string"},
+                "reporting_year":  {"type": "integer"},
+                "calc_dict":       {"type": "object", "description": "Output fra calculate_ghg_emissions"},
+                "esg_score_dict":  {"type": "object", "description": "ESG-scorer"},
+                "gap_report_dict": {"type": "object", "description": "Gap-analyse"},
+                "industry_code":   {"type": "string"},
+            },
+            "required": ["company_name", "calc_dict", "esg_score_dict"],
+        },
+    },
 ]
 
 # ---------------------------------------------------------------------------
@@ -293,6 +350,18 @@ class AgentOrchestrator:
         elif tool_name == "research_company":
             from .company_researcher import CompanyResearcherAgent
             return await CompanyResearcherAgent().safe_run(tool_input)
+
+        elif tool_name == "calculate_ghg_emissions":
+            from .ghg_calculator import GHGCalculatorAgent
+            return await GHGCalculatorAgent().safe_run(tool_input)
+
+        elif tool_name == "run_materiality_assessment":
+            from .materiality_assessor import MaterialityAssessorAgent
+            return await MaterialityAssessorAgent().safe_run(tool_input)
+
+        elif tool_name == "write_report_sections":
+            from .report_writer_agent import ReportWriterAgent
+            return await ReportWriterAgent().safe_run(tool_input)
 
         else:
             return {"ok": False, "error": f"Unknown tool: {tool_name}"}

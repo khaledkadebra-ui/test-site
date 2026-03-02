@@ -293,6 +293,31 @@ export async function agentRoadmap(params: {
   return data
 }
 
+export async function agentGHGCalculate(params: {
+  scope1?: Record<string, unknown>; scope2?: Record<string, unknown>; scope3?: Record<string, unknown>;
+  employee_count?: number; revenue_dkk?: number; industry_code?: string; explain_anomalies?: boolean;
+}) {
+  const { data } = await api.post("/agent/ghg-calculate", params)
+  return data
+}
+
+export async function agentMateriality(params: {
+  industry_code: string; employee_count?: number; revenue_eur?: number; country_code?: string;
+}) {
+  const { data } = await api.post("/agent/materiality", params)
+  return data
+}
+
+export async function agentWriteReport(params: {
+  company_name: string; reporting_year?: number;
+  calc_dict: Record<string, unknown>; esg_score_dict: Record<string, unknown>;
+  gap_report_dict?: Record<string, unknown>; workforce_data?: Record<string, unknown>;
+  policy_data?: Record<string, unknown>; industry_code?: string; run_qa?: boolean;
+}) {
+  const { data } = await api.post("/agent/write-report", params)
+  return data
+}
+
 // ── Email verification ─────────────────────────────────────────────────────────
 
 export async function verifyEmail(token: string) {

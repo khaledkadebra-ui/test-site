@@ -33,6 +33,10 @@ from .roadmap import RoadmapAgent
 from .qa_validator import QAValidatorAgent
 from .benchmark import BenchmarkAgent
 from .sustainability_coach import SustainabilityCoachAgent
+from .ghg_calculator import GHGCalculatorAgent
+from .materiality_assessor import MaterialityAssessorAgent
+from .data_extraction import DataExtractionAgent
+from .report_writer_agent import ReportWriterAgent
 
 __all__ = [
     "AgentOrchestrator",
@@ -44,4 +48,8 @@ __all__ = [
     "QAValidatorAgent",
     "BenchmarkAgent",
     "SustainabilityCoachAgent",
+    "GHGCalculatorAgent",
+    "MaterialityAssessorAgent",
+    "DataExtractionAgent",
+    "ReportWriterAgent",
 ]

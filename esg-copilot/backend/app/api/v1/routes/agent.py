@@ -175,3 +175,78 @@ async def roadmap(body: RoadmapRequest, current_user: CurrentUser):
     if not result.get("ok"):
         raise HTTPException(status_code=500, detail=result.get("error"))
     return result
+
+
+# ── New agents (GHG, Materiality, Report Writer) ───────────────────────────────
+
+class GHGRequest(BaseModel):
+    scope1: dict[str, Any] = {}
+    scope2: dict[str, Any] = {}
+    scope3: dict[str, Any] = {}
+    employee_count: int | None = None
+    revenue_dkk: float = 0
+    industry_code: str = "technology"
+    explain_anomalies: bool = True
+
+
+class MaterialityRequest(BaseModel):
+    industry_code: str
+    employee_count: int | None = None
+    revenue_eur: float | None = None
+    country_code: str = "DK"
+
+
+class ReportWriterRequest(BaseModel):
+    company_name: str
+    reporting_year: int = 2024
+    calc_dict: dict[str, Any]
+    esg_score_dict: dict[str, Any]
+    gap_report_dict: dict[str, Any] = {}
+    workforce_data: dict[str, Any] = {}
+    policy_data: dict[str, Any] = {}
+    environment_data: dict[str, Any] = {}
+    revenue_dkk: float = 0
+    employee_count: int = 0
+    industry_code: str = "technology"
+    country_code: str = "DK"
+    run_qa: bool = False
+
+
+@router.post("/ghg-calculate")
+async def ghg_calculate(body: GHGRequest, current_user: CurrentUser):
+    """
+    Full CO2 calculation (Scope 1/2/3) with anomaly detection and LLM commentary.
+    Uses DEFRA 2024 + Energistyrelsen 2024 emission factors.
+    """
+    from app.services.agents.ghg_calculator import GHGCalculatorAgent
+    result = await GHGCalculatorAgent().safe_run(body.model_dump())
+    if not result.get("ok"):
+        raise HTTPException(status_code=500, detail=result.get("error"))
+    return result
+
+
+@router.post("/materiality")
+async def materiality(body: MaterialityRequest, current_user: CurrentUser):
+    """
+    Double materiality assessment — classifies all 50 VSME datapoints as
+    required / recommended / not_relevant for the company's profile.
+    """
+    from app.services.agents.materiality_assessor import MaterialityAssessorAgent
+    result = await MaterialityAssessorAgent().safe_run(body.model_dump())
+    if not result.get("ok"):
+        raise HTTPException(status_code=500, detail=result.get("error"))
+    return result
+
+
+@router.post("/write-report")
+async def write_report(body: ReportWriterRequest, current_user: CurrentUser):
+    """
+    Generate all VSME narrative sections in parallel.
+    Requires pre-computed calc_dict and esg_score_dict.
+    Optionally runs QA validation on the output.
+    """
+    from app.services.agents.report_writer_agent import ReportWriterAgent
+    result = await ReportWriterAgent().safe_run(body.model_dump())
+    if not result.get("ok"):
+        raise HTTPException(status_code=500, detail=result.get("error"))
+    return result

@@ -1,9 +1,9 @@
 "use client"
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
-import { getMe, getCompany, listSubmissions, listReports, getReport } from "@/lib/api"
+import { getMe, getCompany, listSubmissions, listReports, getReport, agentCompliance } from "@/lib/api"
 import Sidebar from "@/components/Sidebar"
-import { TrendingUp, CheckCircle, XCircle, AlertCircle } from "lucide-react"
+import { TrendingUp, CheckCircle, XCircle, AlertCircle, Bot, Loader2, ShieldCheck } from "lucide-react"
 
 const POLICY_ITEMS = [
   { key: "has_esg_policy", label: "ESG-/bæredygtighedspolitik", category: "G" },
@@ -22,12 +22,23 @@ const POLICY_ITEMS = [
 
 const CAT_COLOR: Record<string, string> = { E: "text-green-600 bg-green-50 border-green-200", S: "text-blue-600 bg-blue-50 border-blue-200", G: "text-purple-600 bg-purple-50 border-purple-200" }
 
+type ComplianceResult = {
+  missing_required: string[]
+  missing_recommended: string[]
+  summary?: string
+}
+
 export default function GoalsPage() {
   const router = useRouter()
   const [report, setReport] = useState<Record<string, unknown> | null>(null)
   const [submission, setSubmission] = useState<Record<string, unknown> | null>(null)
   const [loading, setLoading] = useState(true)
   const [meta, setMeta] = useState({ companyName: "", userEmail: "", plan: "" })
+  const [companyIndustry, setCompanyIndustry] = useState("")
+
+  // AI compliance check
+  const [compliance, setCompliance] = useState<ComplianceResult | null>(null)
+  const [complianceLoading, setComplianceLoading] = useState(false)
 
   useEffect(() => { load() }, [])
 
@@ -38,6 +49,7 @@ export default function GoalsPage() {
       if (!me.company_id) { setLoading(false); return }
       const c = await getCompany(me.company_id)
       setMeta(m => ({ ...m, companyName: c.name }))
+      setCompanyIndustry(c.industry_code || "technology")
       const subs = await listSubmissions(me.company_id)
       if (subs.length) setSubmission(subs[0])
       const reports = await listReports()
@@ -48,6 +60,17 @@ export default function GoalsPage() {
       }
     } catch { router.push("/login") }
     finally { setLoading(false) }
+  }
+
+  async function runComplianceCheck() {
+    if (!submission) return
+    setComplianceLoading(true)
+    try {
+      const result = await agentCompliance(submission as Record<string, unknown>, companyIndustry)
+      setCompliance(result as ComplianceResult)
+    } finally {
+      setComplianceLoading(false)
+    }
   }
 
   const policyData = (submission as Record<string, Record<string, unknown>> | null)?.policy_data || {}
@@ -144,6 +167,105 @@ export default function GoalsPage() {
                 </span>
               </div>
             </div>
+
+            {/* VSME Compliance Check */}
+            {submission && !compliance && !complianceLoading && (
+              <div className="card flex flex-col items-center text-center gap-4 py-8">
+                <div className="w-14 h-14 bg-green-50 rounded-2xl flex items-center justify-center">
+                  <Bot className="w-7 h-7 text-green-500" />
+                </div>
+                <div>
+                  <h2 className="text-base font-bold text-gray-900 mb-1">VSME Compliance-tjek</h2>
+                  <p className="text-sm text-gray-500 max-w-sm">
+                    AI gennemgår dine indberettede data og identificerer manglende obligatoriske og anbefalede VSME-felter
+                  </p>
+                </div>
+                <button
+                  onClick={runComplianceCheck}
+                  className="flex items-center gap-2 bg-green-500 hover:bg-green-600 text-white font-semibold px-5 py-2.5 rounded-xl transition-colors text-sm"
+                >
+                  <ShieldCheck className="w-4 h-4" /> Kør compliance-tjek
+                </button>
+              </div>
+            )}
+
+            {complianceLoading && (
+              <div className="card flex items-center justify-center gap-3 py-10">
+                <Loader2 className="w-6 h-6 text-green-500 animate-spin" />
+                <span className="text-sm text-gray-500">AI gennemgår VSME-krav…</span>
+              </div>
+            )}
+
+            {compliance && (
+              <div className="card">
+                <div className="flex items-center gap-2 mb-4">
+                  <ShieldCheck className="w-5 h-5 text-green-500" />
+                  <h2 className="section-title mb-0">VSME Compliance-resultat</h2>
+                  <span className="ml-auto px-2.5 py-0.5 bg-green-50 text-green-700 text-xs font-semibold rounded-full border border-green-200">AI-genereret</span>
+                </div>
+
+                {compliance.summary && (
+                  <p className="text-sm text-gray-600 leading-relaxed mb-4">{compliance.summary}</p>
+                )}
+
+                <div className="grid grid-cols-2 gap-4 mb-4">
+                  <div className="bg-red-50 border border-red-100 rounded-xl p-4">
+                    <div className="flex items-center gap-2 mb-2">
+                      <XCircle className="w-4 h-4 text-red-500" />
+                      <span className="text-sm font-bold text-red-800">Manglende obligatoriske felter</span>
+                      <span className="ml-auto text-xs font-bold text-red-600 bg-red-100 px-2 py-0.5 rounded-full">
+                        {compliance.missing_required?.length ?? 0}
+                      </span>
+                    </div>
+                    {(compliance.missing_required?.length ?? 0) === 0 ? (
+                      <p className="text-xs text-green-700 font-medium flex items-center gap-1">
+                        <CheckCircle className="w-3.5 h-3.5" /> Alle obligatoriske felter er udfyldt
+                      </p>
+                    ) : (
+                      <ul className="space-y-1">
+                        {compliance.missing_required.map((item, i) => (
+                          <li key={i} className="text-xs text-red-700 flex items-start gap-1.5">
+                            <span className="mt-1 w-1.5 h-1.5 rounded-full bg-red-400 flex-shrink-0" />
+                            {item}
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+
+                  <div className="bg-amber-50 border border-amber-100 rounded-xl p-4">
+                    <div className="flex items-center gap-2 mb-2">
+                      <AlertCircle className="w-4 h-4 text-amber-500" />
+                      <span className="text-sm font-bold text-amber-800">Anbefalede felter</span>
+                      <span className="ml-auto text-xs font-bold text-amber-600 bg-amber-100 px-2 py-0.5 rounded-full">
+                        {compliance.missing_recommended?.length ?? 0}
+                      </span>
+                    </div>
+                    {(compliance.missing_recommended?.length ?? 0) === 0 ? (
+                      <p className="text-xs text-green-700 font-medium flex items-center gap-1">
+                        <CheckCircle className="w-3.5 h-3.5" /> Alle anbefalede felter er udfyldt
+                      </p>
+                    ) : (
+                      <ul className="space-y-1">
+                        {compliance.missing_recommended.map((item, i) => (
+                          <li key={i} className="text-xs text-amber-700 flex items-start gap-1.5">
+                            <span className="mt-1 w-1.5 h-1.5 rounded-full bg-amber-400 flex-shrink-0" />
+                            {item}
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                </div>
+
+                <button
+                  onClick={() => setCompliance(null)}
+                  className="text-xs text-gray-400 hover:text-gray-600 transition-colors"
+                >
+                  Kør tjek igen
+                </button>
+              </div>
+            )}
 
             {!report && !loading && (
               <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 text-sm text-amber-700">

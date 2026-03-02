@@ -1,11 +1,11 @@
 "use client"
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
-import { getMe, getCompany, listReports, getReport } from "@/lib/api"
+import { getMe, getCompany, listReports, getReport, agentImprove, agentRoadmap } from "@/lib/api"
 import Sidebar from "@/components/Sidebar"
 import {
   Target, AlertCircle, Zap, ChevronDown, ChevronUp,
-  TrendingUp, Leaf, Users, Shield, Award,
+  TrendingUp, Leaf, Users, Shield, Award, Loader2, Bot,
 } from "lucide-react"
 
 type Rec = {
@@ -214,9 +214,15 @@ function GapCategory({ title, gaps, catKey }: { title: string; gaps: string[]; c
 export default function ImprovementsPage() {
   const router = useRouter()
   const [report, setReport] = useState<ReportData | null>(null)
+  const [reportMeta, setReportMeta] = useState<{ esg_score_total?: number; esg_score_e?: number; esg_score_s?: number; esg_score_g?: number; industry_code?: string } | null>(null)
   const [loading, setLoading] = useState(true)
   const [catFilter, setCatFilter] = useState("all")
   const [meta, setMeta] = useState({ companyName: "", userEmail: "", plan: "" })
+
+  // AI agent panels
+  const [aiPlan, setAiPlan] = useState<{ action_plan: string; quick_wins: string[] } | null>(null)
+  const [aiRoadmap, setAiRoadmap] = useState<{ roadmap: string } | null>(null)
+  const [aiLoading, setAiLoading] = useState(false)
 
   useEffect(() => { load() }, [])
 
@@ -231,9 +237,53 @@ export default function ImprovementsPage() {
       const completed = reports.filter((rep: { status: string }) => rep.status === "completed")
       if (!completed.length) { setLoading(false); return }
       const r = await getReport(completed[0].report_id).catch(() => null)
-      if (r) setReport(r as ReportData)
+      if (r) {
+        setReport(r as ReportData)
+        setReportMeta({
+          esg_score_total: (r as Record<string, unknown>).esg_score_total as number,
+          esg_score_e: (r as Record<string, unknown>).esg_score_e as number,
+          esg_score_s: (r as Record<string, unknown>).esg_score_s as number,
+          esg_score_g: (r as Record<string, unknown>).esg_score_g as number,
+          industry_code: c.industry_code,
+        })
+      }
     } catch { router.push("/login") }
     finally { setLoading(false) }
+  }
+
+  async function runAiAnalysis() {
+    if (!reportMeta) return
+    setAiLoading(true)
+    try {
+      const gaps = report?.identified_gaps || []
+      const gapAreas = gaps.slice(0, 6).map(g => {
+        const l = g.toLowerCase()
+        if (l.includes("elektr") || l.includes("energ") || l.includes("co2") || l.includes("scope")) return "elforbrug"
+        if (l.includes("affald")) return "affald"
+        if (l.includes("transport") || l.includes("bil")) return "transport"
+        if (l.includes("medarbej") || l.includes("social")) return "medarbejdere"
+        if (l.includes("govern") || l.includes("politik") || l.includes("bestyrelse")) return "governance"
+        return "forbedring"
+      })
+
+      const plan = await agentImprove({
+        esg_score_total: reportMeta.esg_score_total || 50,
+        esg_score_e: reportMeta.esg_score_e,
+        esg_score_s: reportMeta.esg_score_s,
+        esg_score_g: reportMeta.esg_score_g,
+        gap_areas: [...new Set(gapAreas)],
+        industry_code: reportMeta.industry_code,
+      })
+      setAiPlan(plan)
+
+      const roadmapRes = await agentRoadmap({
+        improvement_actions: plan.quick_wins || [],
+        company_size: "small",
+      })
+      setAiRoadmap(roadmapRes)
+    } finally {
+      setAiLoading(false)
+    }
   }
 
   const gaps = report?.identified_gaps || []
@@ -458,6 +508,89 @@ export default function ImprovementsPage() {
                 </div>
               )}
             </section>
+
+            {/* ── AI Handlingsplan CTA ──────────────────────── */}
+            {!aiPlan && !aiLoading && reportMeta && (
+              <section>
+                <div className="bg-white rounded-2xl border border-gray-100 p-8 flex flex-col items-center text-center gap-4">
+                  <div className="w-14 h-14 bg-green-50 rounded-2xl flex items-center justify-center">
+                    <Bot className="w-7 h-7 text-green-500" />
+                  </div>
+                  <div>
+                    <h2 className="text-lg font-bold text-gray-900 mb-1">AI-drevet handlingsplan</h2>
+                    <p className="text-sm text-gray-500 max-w-md">
+                      Lad AI analysere dine ESG-mangler og generere en prioriteret handlingsplan med Q1–Q4 implementeringsvejledning
+                    </p>
+                  </div>
+                  <button
+                    onClick={runAiAnalysis}
+                    className="flex items-center gap-2 bg-green-500 hover:bg-green-600 text-white font-semibold px-6 py-3 rounded-xl transition-colors"
+                  >
+                    <Bot className="w-4 h-4" /> Kør AI-handlingsplan
+                  </button>
+                </div>
+              </section>
+            )}
+
+            {/* ── AI loading ────────────────────────────────── */}
+            {aiLoading && (
+              <section>
+                <div className="bg-white rounded-2xl border border-gray-100 p-12 flex flex-col items-center gap-3">
+                  <Loader2 className="w-8 h-8 text-green-500 animate-spin" />
+                  <div className="text-sm text-gray-500">AI analyserer dine ESG-data og genererer handlingsplan…</div>
+                </div>
+              </section>
+            )}
+
+            {/* ── AI Handlingsplan results ──────────────────── */}
+            {aiPlan && (
+              <section>
+                <div className="flex items-center gap-2 mb-5">
+                  <Bot className="w-5 h-5 text-green-500" />
+                  <h2 className="text-lg font-bold text-gray-900">AI Handlingsplan</h2>
+                  <span className="ml-auto px-2.5 py-0.5 bg-green-50 text-green-700 text-xs font-semibold rounded-full border border-green-200">
+                    AI-genereret
+                  </span>
+                </div>
+
+                <div className="bg-white rounded-2xl border border-gray-100 p-6 mb-4">
+                  <div className="text-sm text-gray-600 leading-relaxed whitespace-pre-line">
+                    {aiPlan.action_plan}
+                  </div>
+                </div>
+
+                {(aiPlan.quick_wins?.length ?? 0) > 0 && (
+                  <div className="bg-amber-50 rounded-2xl border border-amber-100 p-5">
+                    <div className="flex items-center gap-2 mb-3">
+                      <Zap className="w-4 h-4 text-amber-500" />
+                      <span className="text-sm font-bold text-amber-800">Quick wins — start her</span>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {aiPlan.quick_wins.map((win: string, i: number) => (
+                        <span key={i} className="px-3 py-1.5 bg-white rounded-lg border border-amber-200 text-xs font-medium text-amber-900 shadow-sm">
+                          {win}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </section>
+            )}
+
+            {/* ── AI Q1–Q4 Roadmap ─────────────────────────── */}
+            {aiRoadmap && (
+              <section className="pb-8">
+                <div className="flex items-center gap-2 mb-4">
+                  <Bot className="w-5 h-5 text-green-500" />
+                  <h2 className="text-lg font-bold text-gray-900">AI Implementeringsplan (Q1–Q4)</h2>
+                </div>
+                <div className="bg-white rounded-2xl border border-gray-100 p-6">
+                  <div className="text-sm text-gray-600 leading-relaxed whitespace-pre-line">
+                    {aiRoadmap.roadmap}
+                  </div>
+                </div>
+              </section>
+            )}
 
           </div>
         )}
