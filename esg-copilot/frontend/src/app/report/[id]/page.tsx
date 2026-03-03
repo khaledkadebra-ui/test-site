@@ -96,9 +96,28 @@ function parseToBlocks(raw: string): Block[] {
     }
 
     // "Tiltag N: Title" or "Tiltag N – Title" → numbered section header
-    const tiltagM = line.replace(/\*\*/g, "").match(/^Tiltag\s+(\d+)\s*[:\-–]\s*(.+)$/i)
+    const tiltagM = line.replace(/\*\*/g, "").match(/^Tiltag\s+(\d+)\s*[:\-–—]\s*(.+)$/i)
     if (tiltagM) {
       result.push({ type: "tiltag", num: parseInt(tiltagM[1]), text: tiltagM[2].trim() })
+      i++; continue
+    }
+
+    // "Kvartal N — Title" → quarter heading
+    const kvartalM = line.replace(/\*\*/g, "").match(/^(Kvartal\s+\d+\s*[—\-–:]\s*.+)$/i)
+    if (kvartalM) {
+      result.push({ type: "h2", text: kvartalM[1].replace(/\*\*/g, "").replace(/\*/g, "") })
+      i++; continue
+    }
+
+    // Any short line (< 72 chars) containing an em/en-dash separator and no trailing punctuation
+    // catches AI section titles like "Sociale forbedringer — oversigt"
+    if (
+      !line.match(/^[-*•\d]/) &&
+      line.length < 72 &&
+      !line.match(/[.,;]$/) &&
+      (line.includes(" — ") || line.includes(" – "))
+    ) {
+      result.push({ type: "h2", text: line.replace(/\*\*/g, "").replace(/\*/g, "") })
       i++; continue
     }
 
