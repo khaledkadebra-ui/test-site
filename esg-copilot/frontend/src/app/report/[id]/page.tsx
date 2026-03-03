@@ -5,21 +5,8 @@ import dynamic from "next/dynamic"
 import { getReportStatus, getReport, getMe, getCompany } from "@/lib/api"
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from "recharts"
 import Sidebar from "@/components/Sidebar"
-import { TrendingUp, Wind, Users, Building2, ArrowLeft, Loader2, FileDown, Target, Map } from "lucide-react"
+import { TrendingUp, Wind, Users, Building2, ArrowLeft, Loader2, Target, Map } from "lucide-react"
 import type { ReportPdfProps } from "@/components/ReportPdf"
-
-// Strip markdown syntax so AI text renders cleanly as prose
-function stripMd(text: string): string {
-  if (!text) return ""
-  return text
-    .replace(/^#{1,6}\s+/gm, "")       // headings
-    .replace(/\*\*(.+?)\*\*/g, "$1")   // bold
-    .replace(/\*(.+?)\*/g, "$1")       // italic
-    .replace(/^[-*]\s+/gm, "• ")       // bullet lists
-    .replace(/^---+$/gm, "")           // hr
-    .replace(/\n{3,}/g, "\n\n")        // collapse triple newlines
-    .trim()
-}
 
 // Dynamic import so @react-pdf/renderer never runs on the server
 const PdfDownloadButton = dynamic(() => import("@/components/PdfDownloadButton"), {
@@ -33,12 +20,6 @@ const PdfDownloadButton = dynamic(() => import("@/components/PdfDownloadButton")
 
 const RATING_COLOR: Record<string, string> = { A: "#22c55e", B: "#84cc16", C: "#eab308", D: "#f97316", E: "#ef4444" }
 const SCOPE_COLORS = ["#22c55e", "#3b82f6", "#a855f7"]
-const PRIORITY_STYLE: Record<string, string> = {
-  high:   "bg-red-50 border-red-200 text-red-700",
-  medium: "bg-amber-50 border-amber-200 text-amber-700",
-  low:    "bg-green-50 border-green-200 text-green-700",
-}
-const PRIORITY_LABEL: Record<string, string> = { high: "Høj", medium: "Middel", low: "Lav" }
 
 type Rec = {
   id: string; title: string; description: string; effort: string; category: string;
@@ -68,6 +49,162 @@ type ReportData = {
   completed_at?: string
 }
 
+// ─── Rich Text Renderer ──────────────────────────────────────────────────────
+// Renders AI-generated markdown as beautiful, scannable content.
+// Zero text content is changed — only markdown symbols are replaced with visuals.
+
+type Block =
+  | { type: "h2";          text: string }
+  | { type: "h3";          text: string }
+  | { type: "tiltag";      num: number; text: string }
+  | { type: "paragraph";   text: string }
+  | { type: "bulletList";  items: string[] }
+  | { type: "orderedList"; items: string[] }
+
+/** Render **bold** spans inline without changing any word content */
+function renderInline(text: string) {
+  return text.split(/(\*\*[^*]+\*\*)/).map((chunk, i) =>
+    chunk.startsWith("**") && chunk.endsWith("**")
+      ? <strong key={i} className="font-semibold text-gray-800">{chunk.slice(2, -2)}</strong>
+      : <span key={i}>{chunk}</span>
+  )
+}
+
+function parseToBlocks(raw: string): Block[] {
+  if (!raw) return []
+  const lines = raw.split("\n")
+  const result: Block[] = []
+  let i = 0
+
+  while (i < lines.length) {
+    const line = lines[i].trim()
+    if (!line || line === "---") { i++; continue }
+
+    // Markdown headings: ## or ###
+    const hm = line.match(/^(#{1,3})\s+(.+)$/)
+    if (hm) {
+      const level = hm[1].length <= 2 ? "h2" : "h3"
+      result.push({ type: level, text: hm[2].replace(/\*\*/g, "").replace(/\*/g, "") })
+      i++; continue
+    }
+
+    // Standalone **bold line** → subheading
+    const boldLine = line.match(/^\*\*(.+?)\*\*[:\s]*$/)
+    if (boldLine) {
+      result.push({ type: "h3", text: boldLine[1] })
+      i++; continue
+    }
+
+    // "Tiltag N: Title" or "Tiltag N – Title" → numbered section header
+    const tiltagM = line.replace(/\*\*/g, "").match(/^Tiltag\s+(\d+)\s*[:\-–]\s*(.+)$/i)
+    if (tiltagM) {
+      result.push({ type: "tiltag", num: parseInt(tiltagM[1]), text: tiltagM[2].trim() })
+      i++; continue
+    }
+
+    // Bullet list — collect consecutive bullet lines
+    if (line.match(/^[-*•]\s+/)) {
+      const items: string[] = []
+      while (i < lines.length && lines[i].trim().match(/^[-*•]\s+/)) {
+        items.push(lines[i].trim().replace(/^[-*•]\s+/, ""))
+        i++
+      }
+      result.push({ type: "bulletList", items })
+      continue
+    }
+
+    // Ordered list — collect consecutive numbered lines
+    if (line.match(/^\d+\.\s+/)) {
+      const items: string[] = []
+      while (i < lines.length && lines[i].trim().match(/^\d+\.\s+/)) {
+        items.push(lines[i].trim().replace(/^\d+\.\s+/, ""))
+        i++
+      }
+      result.push({ type: "orderedList", items })
+      continue
+    }
+
+    // Regular paragraph
+    result.push({ type: "paragraph", text: line })
+    i++
+  }
+
+  return result
+}
+
+function RichText({ text }: { text: string }) {
+  if (!text) return null
+  const blocks = parseToBlocks(text)
+
+  return (
+    <div className="space-y-3">
+      {blocks.map((block, i) => {
+        switch (block.type) {
+
+          case "h2":
+            return (
+              <h3 key={i} className="text-sm font-bold text-gray-800 border-b border-gray-100 pb-1.5 mt-4 first:mt-0">
+                {block.text}
+              </h3>
+            )
+
+          case "h3":
+            return (
+              <p key={i} className="text-[11px] font-semibold uppercase tracking-widest text-gray-400 mt-3 first:mt-0">
+                {block.text}
+              </p>
+            )
+
+          // "Tiltag N: Title" → green numbered badge + bold title
+          case "tiltag":
+            return (
+              <div key={i} className="flex items-start gap-3 mt-5 first:mt-0">
+                <div className="w-6 h-6 rounded-full bg-green-500 flex items-center justify-center flex-shrink-0 mt-0.5">
+                  <span className="text-white text-[11px] font-bold">{block.num}</span>
+                </div>
+                <h3 className="text-sm font-semibold text-green-800 leading-snug">{block.text}</h3>
+              </div>
+            )
+
+          case "paragraph":
+            return (
+              <p key={i} className="text-sm text-gray-600 leading-relaxed">
+                {renderInline(block.text)}
+              </p>
+            )
+
+          case "bulletList":
+            return (
+              <ul key={i} className="space-y-1.5 pl-1">
+                {block.items.map((item, j) => (
+                  <li key={j} className="flex gap-2.5 text-sm text-gray-600">
+                    <span className="w-1.5 h-1.5 rounded-full bg-green-400 flex-shrink-0 mt-2" />
+                    <span className="leading-relaxed">{renderInline(item)}</span>
+                  </li>
+                ))}
+              </ul>
+            )
+
+          case "orderedList":
+            return (
+              <ol key={i} className="space-y-1.5 pl-1">
+                {block.items.map((item, j) => (
+                  <li key={j} className="flex gap-2.5 text-sm text-gray-600">
+                    <span className="w-5 h-5 rounded-full bg-gray-100 text-gray-500 flex items-center justify-center flex-shrink-0 text-[10px] font-bold mt-0.5 shrink-0">
+                      {j + 1}
+                    </span>
+                    <span className="leading-relaxed">{renderInline(item)}</span>
+                  </li>
+                ))}
+              </ol>
+            )
+        }
+      })}
+    </div>
+  )
+}
+// ────────────────────────────────────────────────────────────────────────────
+
 export default function ReportPage() {
   const { id } = useParams<{ id: string }>()
   const router = useRouter()
@@ -79,9 +216,7 @@ export default function ReportPage() {
 
   async function pollStatus() {
     try {
-      // Load company name in parallel with status poll
       getMe().then(me => getCompany(me.company_id)).then(c => setCompanyName(c.name)).catch(() => {})
-
       const s = await getReportStatus(id)
       setStatus(s.status)
       if (s.status === "completed") {
@@ -103,12 +238,11 @@ export default function ReportPage() {
   const ratingColor = RATING_COLOR[r.esg_rating] || "#6b7280"
 
   const scopeData = [
-    { name: "Scope 1 — Direkte",  value: r.scope1_co2e_tonnes },
-    { name: "Scope 2 — Energi",   value: r.scope2_co2e_tonnes },
+    { name: "Scope 1 — Direkte",   value: r.scope1_co2e_tonnes },
+    { name: "Scope 2 — Energi",    value: r.scope2_co2e_tonnes },
     { name: "Scope 3 — Værdikæde", value: r.scope3_co2e_tonnes },
   ]
 
-  // Build props for PDF
   const reportDateStr = r.completed_at ?? new Date().toISOString()
   const pdfProps: ReportPdfProps = {
     companyName,
@@ -150,11 +284,11 @@ export default function ReportPage() {
               <p className="text-sm text-gray-500">AI-genereret · Energistyrelsen 2024 emissionsfaktorer</p>
             </div>
           </div>
-
           <PdfDownloadButton {...pdfProps} />
         </div>
 
         <div className="p-8 space-y-6 max-w-5xl">
+
           {/* KPI row */}
           <div className="grid grid-cols-4 gap-4">
             <div className="card text-center" style={{ borderTop: `3px solid ${ratingColor}` }}>
@@ -175,12 +309,12 @@ export default function ReportPage() {
             </div>
           </div>
 
-          {/* Ledelsesoversigt */}
+          {/* Ledelsesoversigt B1 */}
           <div className="card">
-            <h2 className="section-title flex items-center gap-2">
+            <h2 className="section-title flex items-center gap-2 mb-4">
               <TrendingUp className="w-4 h-4 text-green-500" /> Ledelsesoversigt (B1)
             </h2>
-            <p className="text-gray-600 leading-relaxed text-sm whitespace-pre-line">{stripMd(r.executive_summary)}</p>
+            <RichText text={r.executive_summary} />
           </div>
 
           {/* CO2 + ESG charts */}
@@ -214,9 +348,9 @@ export default function ReportPage() {
             <div className="card">
               <h2 className="section-title">ESG-scorefordeling</h2>
               {[
-                { name: "Miljø (E)", value: r.esg_score_e, weight: "50%", color: "#22c55e", icon: Wind },
-                { name: "Sociale (S)", value: r.esg_score_s, weight: "30%", color: "#3b82f6", icon: Users },
-                { name: "Lederskab (G)", value: r.esg_score_g, weight: "20%", color: "#a855f7", icon: Building2 },
+                { name: "Miljø (E)",     value: r.esg_score_e, weight: "50%", color: "#22c55e" },
+                { name: "Sociale (S)",   value: r.esg_score_s, weight: "30%", color: "#3b82f6" },
+                { name: "Lederskab (G)", value: r.esg_score_g, weight: "20%", color: "#a855f7" },
               ].map(({ name, value, weight, color }) => (
                 <div key={name} className="mb-5 last:mb-0">
                   <div className="flex justify-between text-sm mb-1.5">
@@ -238,29 +372,29 @@ export default function ReportPage() {
           {/* CO2 + ESG narratives */}
           <div className="grid grid-cols-2 gap-5">
             <div className="card">
-              <h2 className="section-title flex items-center gap-2">
+              <h2 className="section-title flex items-center gap-2 mb-4">
                 <Wind className="w-4 h-4 text-blue-500" /> B3 — CO₂-analyse
               </h2>
-              <p className="text-gray-600 leading-relaxed text-sm whitespace-pre-line">{stripMd(r.co2_narrative)}</p>
+              <RichText text={r.co2_narrative} />
             </div>
             <div className="card">
-              <h2 className="section-title flex items-center gap-2">
+              <h2 className="section-title flex items-center gap-2 mb-4">
                 <Users className="w-4 h-4 text-purple-500" /> ESG-præstation
               </h2>
-              <p className="text-gray-600 leading-relaxed text-sm whitespace-pre-line">{stripMd(r.esg_narrative)}</p>
+              <RichText text={r.esg_narrative} />
             </div>
           </div>
 
           {/* Foreslåede tiltag */}
           <div className="card border-l-4 border-l-green-500">
-            <h2 className="section-title flex items-center gap-2 text-green-700">
+            <h2 className="section-title flex items-center gap-2 text-green-700 mb-1">
               <Target className="w-5 h-5 text-green-500" />
-              Foreslåede tiltag & forbedringer
+              Foreslåede tiltag &amp; forbedringer
             </h2>
             <p className="text-xs text-gray-400 mb-4 italic">
               Konkrete handlinger med SMART-mål, KPI&apos;er og estimeret CO₂-reduktion
             </p>
-            <p className="text-gray-600 leading-relaxed text-sm whitespace-pre-line">{stripMd(r.improvements_narrative)}</p>
+            <RichText text={r.improvements_narrative} />
           </div>
 
           {/* Identificerede mangler */}
@@ -284,7 +418,9 @@ export default function ReportPage() {
               <Map className="w-4 h-4 text-green-500" /> 12-måneders handlingsplan
             </h2>
             {r.roadmap_narrative && (
-              <p className="text-gray-500 text-sm mb-5 whitespace-pre-line">{stripMd(r.roadmap_narrative)}</p>
+              <div className="mb-5">
+                <RichText text={r.roadmap_narrative} />
+              </div>
             )}
             <div className="grid grid-cols-4 gap-4">
               {(["Q1", "Q2", "Q3", "Q4"] as const).map(q => (
@@ -293,8 +429,8 @@ export default function ReportPage() {
                     {q === "Q1" ? "Kvartal 1" : q === "Q2" ? "Kvartal 2" : q === "Q3" ? "Kvartal 3" : "Kvartal 4"}
                   </div>
                   <div className="p-3 space-y-2">
-                    {r.recommendations.filter(a => a.timeline === q).map((a, i) => (
-                      <div key={i} className="text-xs text-gray-600 border-l-2 border-green-400 pl-2 leading-relaxed">{a.title}</div>
+                    {r.recommendations.filter(a => a.timeline === q).map((a, idx) => (
+                      <div key={idx} className="text-xs text-gray-600 border-l-2 border-green-400 pl-2 leading-relaxed">{a.title}</div>
                     ))}
                     {r.recommendations.filter(a => a.timeline === q).length === 0 && (
                       <div className="text-xs text-gray-300">—</div>
@@ -309,6 +445,7 @@ export default function ReportPage() {
           <div className="text-xs text-gray-400 bg-white border border-gray-100 rounded-xl p-4 leading-relaxed">
             <span className="font-semibold text-gray-500">Ansvarsfraskrivelse: </span>{r.disclaimer}
           </div>
+
         </div>
       </div>
     </div>
