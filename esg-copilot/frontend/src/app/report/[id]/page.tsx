@@ -5,7 +5,7 @@ import dynamic from "next/dynamic"
 import { getReportStatus, getReport, getMe, getCompany } from "@/lib/api"
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from "recharts"
 import Sidebar from "@/components/Sidebar"
-import { TrendingUp, Wind, Users, Building2, ArrowLeft, Loader2, Target, Map } from "lucide-react"
+import { TrendingUp, Wind, Users, Building2, ArrowLeft, Loader2, Target, Map, ChevronDown, ChevronUp } from "lucide-react"
 import type { ReportPdfProps } from "@/components/ReportPdf"
 
 // Dynamic import so @react-pdf/renderer never runs on the server
@@ -19,7 +19,15 @@ const PdfDownloadButton = dynamic(() => import("@/components/PdfDownloadButton")
 })
 
 const RATING_COLOR: Record<string, string> = { A: "#22c55e", B: "#84cc16", C: "#eab308", D: "#f97316", E: "#ef4444" }
+const RATING_BG: Record<string, string>    = { A: "#f0fdf4", B: "#f7fee7", C: "#fefce8", D: "#fff7ed", E: "#fef2f2" }
 const SCOPE_COLORS = ["#22c55e", "#3b82f6", "#a855f7"]
+
+const PRIORITY_CFG: Record<string, { border: string; badge: string; label: string }> = {
+  high:   { border: "border-l-red-400",   badge: "bg-red-50 text-red-700 border-red-200",     label: "Høj prioritet" },
+  medium: { border: "border-l-amber-400", badge: "bg-amber-50 text-amber-700 border-amber-200", label: "Middel prioritet" },
+  low:    { border: "border-l-green-400", badge: "bg-green-50 text-green-700 border-green-200", label: "Lav prioritet" },
+}
+const PRIORITY_ORDER: Record<string, number> = { high: 0, medium: 1, low: 2 }
 
 type Rec = {
   id: string; title: string; description: string; effort: string; category: string;
@@ -50,9 +58,6 @@ type ReportData = {
 }
 
 // ─── Rich Text Renderer ──────────────────────────────────────────────────────
-// Renders AI-generated markdown as beautiful, scannable content.
-// Zero text content is changed — only markdown symbols are replaced with visuals.
-
 type Block =
   | { type: "h2";          text: string }
   | { type: "h3";          text: string }
@@ -61,7 +66,6 @@ type Block =
   | { type: "bulletList";  items: string[] }
   | { type: "orderedList"; items: string[] }
 
-/** Render **bold** spans inline without changing any word content */
 function renderInline(text: string) {
   return text.split(/(\*\*[^*]+\*\*)/).map((chunk, i) =>
     chunk.startsWith("**") && chunk.endsWith("**")
@@ -75,150 +79,169 @@ function parseToBlocks(raw: string): Block[] {
   const lines = raw.split("\n")
   const result: Block[] = []
   let i = 0
-
   while (i < lines.length) {
     const line = lines[i].trim()
     if (!line || line === "---") { i++; continue }
-
-    // Markdown headings: ## or ###
     const hm = line.match(/^(#{1,3})\s+(.+)$/)
-    if (hm) {
-      const level = hm[1].length <= 2 ? "h2" : "h3"
-      result.push({ type: level, text: hm[2].replace(/\*\*/g, "").replace(/\*/g, "") })
-      i++; continue
-    }
-
-    // Standalone **bold line** → subheading
+    if (hm) { result.push({ type: hm[1].length <= 2 ? "h2" : "h3", text: hm[2].replace(/\*\*/g, "").replace(/\*/g, "") }); i++; continue }
     const boldLine = line.match(/^\*\*(.+?)\*\*[:\s]*$/)
-    if (boldLine) {
-      result.push({ type: "h3", text: boldLine[1] })
-      i++; continue
-    }
-
-    // "Tiltag N: Title" or "Tiltag N – Title" → numbered section header
+    if (boldLine) { result.push({ type: "h3", text: boldLine[1] }); i++; continue }
     const tiltagM = line.replace(/\*\*/g, "").match(/^Tiltag\s+(\d+)\s*[:\-–—]\s*(.+)$/i)
-    if (tiltagM) {
-      result.push({ type: "tiltag", num: parseInt(tiltagM[1]), text: tiltagM[2].trim() })
-      i++; continue
-    }
-
-    // "Kvartal N — Title" → quarter heading
+    if (tiltagM) { result.push({ type: "tiltag", num: parseInt(tiltagM[1]), text: tiltagM[2].trim() }); i++; continue }
     const kvartalM = line.replace(/\*\*/g, "").match(/^(Kvartal\s+\d+\s*[—\-–:]\s*.+)$/i)
-    if (kvartalM) {
-      result.push({ type: "h2", text: kvartalM[1].replace(/\*\*/g, "").replace(/\*/g, "") })
-      i++; continue
+    if (kvartalM) { result.push({ type: "h2", text: kvartalM[1].replace(/\*\*/g, "").replace(/\*/g, "") }); i++; continue }
+    if (!line.match(/^[-*•\d]/) && line.length < 72 && !line.match(/[.,;]$/) && (line.includes(" — ") || line.includes(" – "))) {
+      result.push({ type: "h2", text: line.replace(/\*\*/g, "").replace(/\*/g, "") }); i++; continue
     }
-
-    // Any short line (< 72 chars) containing an em/en-dash separator and no trailing punctuation
-    // catches AI section titles like "Sociale forbedringer — oversigt"
-    if (
-      !line.match(/^[-*•\d]/) &&
-      line.length < 72 &&
-      !line.match(/[.,;]$/) &&
-      (line.includes(" — ") || line.includes(" – "))
-    ) {
-      result.push({ type: "h2", text: line.replace(/\*\*/g, "").replace(/\*/g, "") })
-      i++; continue
-    }
-
-    // Bullet list — collect consecutive bullet lines
     if (line.match(/^[-*•]\s+/)) {
       const items: string[] = []
-      while (i < lines.length && lines[i].trim().match(/^[-*•]\s+/)) {
-        items.push(lines[i].trim().replace(/^[-*•]\s+/, ""))
-        i++
-      }
-      result.push({ type: "bulletList", items })
-      continue
+      while (i < lines.length && lines[i].trim().match(/^[-*•]\s+/)) { items.push(lines[i].trim().replace(/^[-*•]\s+/, "")); i++ }
+      result.push({ type: "bulletList", items }); continue
     }
-
-    // Ordered list — collect consecutive numbered lines
     if (line.match(/^\d+\.\s+/)) {
       const items: string[] = []
-      while (i < lines.length && lines[i].trim().match(/^\d+\.\s+/)) {
-        items.push(lines[i].trim().replace(/^\d+\.\s+/, ""))
-        i++
-      }
-      result.push({ type: "orderedList", items })
-      continue
+      while (i < lines.length && lines[i].trim().match(/^\d+\.\s+/)) { items.push(lines[i].trim().replace(/^\d+\.\s+/, "")); i++ }
+      result.push({ type: "orderedList", items }); continue
     }
-
-    // Regular paragraph
-    result.push({ type: "paragraph", text: line })
-    i++
+    result.push({ type: "paragraph", text: line }); i++
   }
-
   return result
 }
 
 function RichText({ text }: { text: string }) {
   if (!text) return null
-  const blocks = parseToBlocks(text)
-
   return (
     <div className="space-y-3">
-      {blocks.map((block, i) => {
+      {parseToBlocks(text).map((block, i) => {
         switch (block.type) {
-
-          case "h2":
-            return (
-              <h3 key={i} className="text-sm font-bold text-gray-800 border-b border-gray-100 pb-1.5 mt-4 first:mt-0">
-                {block.text}
-              </h3>
-            )
-
-          case "h3":
-            return (
-              <p key={i} className="text-[11px] font-semibold uppercase tracking-widest text-gray-400 mt-3 first:mt-0">
-                {block.text}
-              </p>
-            )
-
-          // "Tiltag N: Title" → green numbered badge + bold title
-          case "tiltag":
-            return (
-              <div key={i} className="flex items-start gap-3 mt-5 first:mt-0">
-                <div className="w-6 h-6 rounded-full bg-green-500 flex items-center justify-center flex-shrink-0 mt-0.5">
-                  <span className="text-white text-[11px] font-bold">{block.num}</span>
-                </div>
-                <h3 className="text-sm font-semibold text-green-800 leading-snug">{block.text}</h3>
+          case "h2":        return <h3 key={i} className="text-sm font-bold text-gray-800 border-b border-gray-100 pb-1.5 mt-4 first:mt-0">{block.text}</h3>
+          case "h3":        return <p  key={i} className="text-[11px] font-semibold uppercase tracking-widest text-gray-400 mt-3 first:mt-0">{block.text}</p>
+          case "tiltag":    return (
+            <div key={i} className="flex items-start gap-3 mt-5 first:mt-0">
+              <div className="w-6 h-6 rounded-full bg-green-500 flex items-center justify-center flex-shrink-0 mt-0.5">
+                <span className="text-white text-[11px] font-bold">{block.num}</span>
               </div>
-            )
+              <h3 className="text-sm font-semibold text-green-800 leading-snug">{block.text}</h3>
+            </div>
+          )
+          case "paragraph": return <p key={i} className="text-sm text-gray-600 leading-relaxed">{renderInline(block.text)}</p>
+          case "bulletList": return (
+            <ul key={i} className="space-y-1.5 pl-1">
+              {block.items.map((item, j) => (
+                <li key={j} className="flex gap-2.5 text-sm text-gray-600">
+                  <span className="w-1.5 h-1.5 rounded-full bg-green-400 flex-shrink-0 mt-2" />
+                  <span className="leading-relaxed">{renderInline(item)}</span>
+                </li>
+              ))}
+            </ul>
+          )
+          case "orderedList": return (
+            <ol key={i} className="space-y-1.5 pl-1">
+              {block.items.map((item, j) => (
+                <li key={j} className="flex gap-2.5 text-sm text-gray-600">
+                  <span className="w-5 h-5 rounded-full bg-gray-100 text-gray-500 flex items-center justify-center flex-shrink-0 text-[10px] font-bold mt-0.5 shrink-0">{j + 1}</span>
+                  <span className="leading-relaxed">{renderInline(item)}</span>
+                </li>
+              ))}
+            </ol>
+          )
+        }
+      })}
+    </div>
+  )
+}
+// ────────────────────────────────────────────────────────────────────────────
 
-          case "paragraph":
-            return (
-              <p key={i} className="text-sm text-gray-600 leading-relaxed">
-                {renderInline(block.text)}
-              </p>
-            )
+// ─── Recommendation Card ─────────────────────────────────────────────────────
+function RecCard({ rec, index }: { rec: Rec; index: number }) {
+  const [open, setOpen] = useState(false)
+  const p = PRIORITY_CFG[rec.priority] ?? PRIORITY_CFG.medium
 
-          case "bulletList":
-            return (
-              <ul key={i} className="space-y-1.5 pl-1">
-                {block.items.map((item, j) => (
-                  <li key={j} className="flex gap-2.5 text-sm text-gray-600">
-                    <span className="w-1.5 h-1.5 rounded-full bg-green-400 flex-shrink-0 mt-2" />
-                    <span className="leading-relaxed">{renderInline(item)}</span>
-                  </li>
-                ))}
-              </ul>
-            )
+  return (
+    <div className={`bg-white rounded-2xl border border-gray-100 shadow-sm border-l-4 ${p.border} overflow-hidden`}>
+      {/* Header */}
+      <div className="p-5">
+        <div className="flex items-start justify-between gap-4">
+          <div className="flex items-start gap-3">
+            <div className="w-7 h-7 rounded-full bg-green-500 text-white flex items-center justify-center text-xs font-bold flex-shrink-0 mt-0.5">
+              {index + 1}
+            </div>
+            <div>
+              <h3 className="text-sm font-semibold text-gray-800 leading-snug">{rec.title}</h3>
+              {rec.description && (
+                <p className="text-xs text-gray-500 mt-1 leading-relaxed">{rec.description}</p>
+              )}
+            </div>
+          </div>
+          <div className="flex items-center gap-2 flex-shrink-0 mt-0.5">
+            <span className={`text-[11px] font-semibold px-2.5 py-0.5 rounded-full border ${p.badge}`}>{p.label}</span>
+            <span className="text-[11px] font-semibold px-2.5 py-0.5 rounded-full border bg-gray-50 text-gray-600 border-gray-200">{rec.timeline}</span>
+          </div>
+        </div>
 
-          case "orderedList":
-            return (
-              <ol key={i} className="space-y-1.5 pl-1">
-                {block.items.map((item, j) => (
-                  <li key={j} className="flex gap-2.5 text-sm text-gray-600">
-                    <span className="w-5 h-5 rounded-full bg-gray-100 text-gray-500 flex items-center justify-center flex-shrink-0 text-[10px] font-bold mt-0.5 shrink-0">
-                      {j + 1}
-                    </span>
-                    <span className="leading-relaxed">{renderInline(item)}</span>
+        {/* Impact pills */}
+        <div className="flex gap-2 mt-3 pl-10">
+          {rec.score_improvement_pts > 0 && (
+            <span className="text-[11px] font-medium text-green-700 bg-green-50 border border-green-100 px-2.5 py-0.5 rounded-full">
+              +{rec.score_improvement_pts.toFixed(1)} ESG-point
+            </span>
+          )}
+          {rec.estimated_co2_reduction_pct > 0 && (
+            <span className="text-[11px] font-medium text-blue-700 bg-blue-50 border border-blue-100 px-2.5 py-0.5 rounded-full">
+              −{rec.estimated_co2_reduction_pct}% CO₂
+            </span>
+          )}
+          {rec.category && (
+            <span className="text-[11px] font-medium text-gray-500 bg-gray-50 border border-gray-100 px-2.5 py-0.5 rounded-full">
+              {rec.category}
+            </span>
+          )}
+        </div>
+
+        {/* Expand toggle */}
+        <button
+          onClick={() => setOpen(o => !o)}
+          className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-gray-600 transition-colors mt-3 pl-10"
+        >
+          {open ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+          {open ? "Skjul detaljer" : "Se SMART-mål og handlingstrin"}
+        </button>
+      </div>
+
+      {/* Expanded details */}
+      {open && (
+        <div className="border-t border-gray-50 bg-gray-50/50 px-5 pb-5 pt-4 pl-[4.5rem] space-y-4">
+          {rec.smart_goal && (
+            <div>
+              <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400 mb-1.5">SMART-mål</p>
+              <p className="text-xs text-gray-600 leading-relaxed">{rec.smart_goal}</p>
+            </div>
+          )}
+          {rec.action_steps?.length > 0 && (
+            <div>
+              <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400 mb-1.5">Handlingstrin</p>
+              <ol className="space-y-1.5">
+                {rec.action_steps.map((step, i) => (
+                  <li key={i} className="flex gap-2.5 text-xs text-gray-600">
+                    <span className="w-4 h-4 rounded-full bg-white border border-gray-200 text-gray-500 flex items-center justify-center text-[10px] font-bold flex-shrink-0 mt-0.5">{i + 1}</span>
+                    <span className="leading-relaxed">{step}</span>
                   </li>
                 ))}
               </ol>
-            )
-        }
-      })}
+            </div>
+          )}
+          {rec.kpis?.length > 0 && (
+            <div>
+              <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400 mb-1.5">KPI&apos;er</p>
+              <div className="flex flex-wrap gap-1.5">
+                {rec.kpis.map((kpi, i) => (
+                  <span key={i} className="text-[11px] text-gray-500 bg-white border border-gray-200 px-2 py-0.5 rounded-full">{kpi}</span>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   )
 }
@@ -255,12 +278,17 @@ export default function ReportPage() {
 
   const r = report
   const ratingColor = RATING_COLOR[r.esg_rating] || "#6b7280"
+  const ratingBg    = RATING_BG[r.esg_rating]    || "#f9fafb"
 
   const scopeData = [
     { name: "Scope 1 — Direkte",   value: r.scope1_co2e_tonnes },
     { name: "Scope 2 — Energi",    value: r.scope2_co2e_tonnes },
     { name: "Scope 3 — Værdikæde", value: r.scope3_co2e_tonnes },
   ]
+
+  const sortedRecs = [...(r.recommendations ?? [])].sort(
+    (a, b) => (PRIORITY_ORDER[a.priority] ?? 1) - (PRIORITY_ORDER[b.priority] ?? 1)
+  )
 
   const reportDateStr = r.completed_at ?? new Date().toISOString()
   const pdfProps: ReportPdfProps = {
@@ -292,7 +320,7 @@ export default function ReportPage() {
       <Sidebar />
 
       <div className="ml-60 flex-1 flex flex-col">
-        {/* Header */}
+        {/* ── Page header ── */}
         <div className="bg-white border-b border-gray-100 px-8 py-5 flex items-center justify-between">
           <div className="flex items-center gap-4">
             <button onClick={() => router.push("/dashboard")} className="btn-secondary flex items-center gap-1.5 py-2">
@@ -308,35 +336,81 @@ export default function ReportPage() {
 
         <div className="p-8 space-y-6 max-w-5xl">
 
-          {/* KPI row */}
-          <div className="grid grid-cols-4 gap-4">
-            <div className="card text-center" style={{ borderTop: `3px solid ${ratingColor}` }}>
-              <div className="text-5xl font-black mb-1" style={{ color: ratingColor }}>{r.esg_rating}</div>
-              <div className="text-xs font-semibold text-gray-500 uppercase tracking-wider">ESG-vurdering</div>
-            </div>
-            <div className="card text-center border-t-[3px] border-t-green-400">
-              <div className="text-4xl font-bold text-gray-900 mb-1">{r.esg_score_total.toFixed(1)}</div>
-              <div className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Score / 100</div>
-            </div>
-            <div className="card text-center border-t-[3px] border-t-blue-400">
-              <div className="text-4xl font-bold text-gray-900 mb-1">{r.total_co2e_tonnes.toFixed(1)}</div>
-              <div className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Total tCO₂e</div>
-            </div>
-            <div className="card text-center border-t-[3px] border-t-purple-400">
-              <div className="text-4xl font-bold text-gray-900 mb-1">{Math.round(r.industry_percentile)}</div>
-              <div className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Branche-percentil</div>
+          {/* ── Section 1: Hero scorecard ── */}
+          <div className="card p-0 overflow-hidden">
+            <div className="flex items-stretch">
+
+              {/* Rating column */}
+              <div
+                className="flex flex-col items-center justify-center px-8 py-7 min-w-[160px] flex-shrink-0"
+                style={{ background: ratingBg }}
+              >
+                <div className="text-7xl font-black leading-none mb-2" style={{ color: ratingColor }}>
+                  {r.esg_rating}
+                </div>
+                <div className="text-2xl font-bold text-gray-800 leading-none">
+                  {r.esg_score_total.toFixed(1)}
+                </div>
+                <div className="text-xs text-gray-400 mt-1">ud af 100</div>
+                <div
+                  className="mt-3 text-[11px] font-semibold uppercase tracking-widest px-2.5 py-1 rounded-full"
+                  style={{ color: ratingColor, background: `${ratingColor}18` }}
+                >
+                  ESG-vurdering
+                </div>
+              </div>
+
+              {/* Divider */}
+              <div className="w-px bg-gray-100 flex-shrink-0" />
+
+              {/* E/S/G scores + stats */}
+              <div className="flex-1 px-8 py-7 space-y-4">
+                <div className="space-y-3">
+                  {[
+                    { name: "Miljø",     abbr: "E", value: r.esg_score_e, weight: "50%", color: "#22c55e" },
+                    { name: "Sociale",   abbr: "S", value: r.esg_score_s, weight: "30%", color: "#3b82f6" },
+                    { name: "Lederskab", abbr: "G", value: r.esg_score_g, weight: "20%", color: "#a855f7" },
+                  ].map(({ name, abbr, value, weight, color }) => (
+                    <div key={abbr} className="flex items-center gap-3">
+                      <span
+                        className="text-[11px] font-bold w-5 h-5 rounded flex items-center justify-center flex-shrink-0"
+                        style={{ color, background: `${color}18` }}
+                      >{abbr}</span>
+                      <span className="text-xs text-gray-500 w-20 flex-shrink-0">{name} <span className="text-gray-300">({weight})</span></span>
+                      <div className="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                        <div className="h-full rounded-full transition-all" style={{ width: `${value}%`, background: color }} />
+                      </div>
+                      <span className="text-xs font-semibold text-gray-700 w-14 text-right flex-shrink-0">
+                        {value.toFixed(1)}<span className="text-gray-400 font-normal"> / 100</span>
+                      </span>
+                    </div>
+                  ))}
+                </div>
+
+                {/* CO₂ + Percentile stat row */}
+                <div className="flex gap-6 pt-3 border-t border-gray-50">
+                  <div>
+                    <div className="text-[10px] font-semibold uppercase tracking-widest text-gray-400 mb-0.5">CO₂-aftryk</div>
+                    <div className="text-xl font-bold text-gray-800">
+                      {r.total_co2e_tonnes.toFixed(1)}
+                      <span className="text-sm font-normal text-gray-400 ml-1">tCO₂e</span>
+                    </div>
+                  </div>
+                  <div className="w-px bg-gray-100" />
+                  <div>
+                    <div className="text-[10px] font-semibold uppercase tracking-widest text-gray-400 mb-0.5">Brancheplacering</div>
+                    <div className="text-xl font-bold text-gray-800">
+                      Bedre end{" "}
+                      <span style={{ color: ratingColor }}>{Math.round(r.industry_percentile)}%</span>
+                      <span className="text-sm font-normal text-gray-400 ml-1">af branchen</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
 
-          {/* Ledelsesoversigt B1 */}
-          <div className="card">
-            <h2 className="section-title flex items-center gap-2 mb-4">
-              <TrendingUp className="w-4 h-4 text-green-500" /> Ledelsesoversigt (B1)
-            </h2>
-            <RichText text={r.executive_summary} />
-          </div>
-
-          {/* CO2 + ESG charts */}
+          {/* ── Section 2: CO₂ scope chart + ESG score bars ── */}
           <div className="grid grid-cols-2 gap-5">
             <div className="card">
               <h2 className="section-title flex items-center gap-2">
@@ -388,38 +462,18 @@ export default function ReportPage() {
             </div>
           </div>
 
-          {/* CO2 + ESG narratives */}
-          <div className="grid grid-cols-2 gap-5">
-            <div className="card">
-              <h2 className="section-title flex items-center gap-2 mb-4">
-                <Wind className="w-4 h-4 text-blue-500" /> B3 — CO₂-analyse
-              </h2>
-              <RichText text={r.co2_narrative} />
-            </div>
-            <div className="card">
-              <h2 className="section-title flex items-center gap-2 mb-4">
-                <Users className="w-4 h-4 text-purple-500" /> ESG-præstation
-              </h2>
-              <RichText text={r.esg_narrative} />
-            </div>
-          </div>
-
-          {/* Foreslåede tiltag */}
-          <div className="card border-l-4 border-l-green-500">
-            <h2 className="section-title flex items-center gap-2 text-green-700 mb-1">
-              <Target className="w-5 h-5 text-green-500" />
-              Foreslåede tiltag &amp; forbedringer
+          {/* ── Section 3: Ledelsesoversigt B1 (executive summary) ── */}
+          <div className="card">
+            <h2 className="section-title flex items-center gap-2 mb-4">
+              <TrendingUp className="w-4 h-4 text-green-500" /> Ledelsesoversigt (B1)
             </h2>
-            <p className="text-xs text-gray-400 mb-4 italic">
-              Konkrete handlinger med SMART-mål, KPI&apos;er og estimeret CO₂-reduktion
-            </p>
-            <RichText text={r.improvements_narrative} />
+            <RichText text={r.executive_summary} />
           </div>
 
-          {/* Identificerede mangler */}
-          {r.identified_gaps.length > 0 && (
+          {/* ── Section 4: Identified gaps (conditional) ── */}
+          {r.identified_gaps?.length > 0 && (
             <div className="card">
-              <h2 className="section-title">Identificerede mangler</h2>
+              <h2 className="section-title mb-3">Identificerede mangler</h2>
               <div className="space-y-2">
                 {r.identified_gaps.map((gap, i) => (
                   <div key={i} className="flex gap-3 p-3 rounded-xl bg-amber-50 border border-amber-100">
@@ -431,36 +485,55 @@ export default function ReportPage() {
             </div>
           )}
 
-          {/* 12-måneders handlingsplan */}
-          <div className="card">
-            <h2 className="section-title flex items-center gap-2">
-              <Map className="w-4 h-4 text-green-500" /> 12-måneders handlingsplan
-            </h2>
-            {r.roadmap_narrative && (
-              <div className="mb-5">
-                <RichText text={r.roadmap_narrative} />
+          {/* ── Section 5: Recommendation cards ── */}
+          {sortedRecs.length > 0 && (
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <h2 className="section-title flex items-center gap-2">
+                  <Target className="w-4 h-4 text-green-500" /> Anbefalede tiltag &amp; forbedringer
+                </h2>
+                <span className="text-xs text-gray-400">{sortedRecs.length} tiltag · sorteret efter prioritet</span>
               </div>
-            )}
-            <div className="grid grid-cols-4 gap-4">
-              {(["Q1", "Q2", "Q3", "Q4"] as const).map(q => (
-                <div key={q} className="bg-gray-50 rounded-xl overflow-hidden border border-gray-100">
-                  <div className="bg-green-500 px-4 py-2 text-xs font-bold text-white uppercase tracking-wider">
-                    {q === "Q1" ? "Kvartal 1" : q === "Q2" ? "Kvartal 2" : q === "Q3" ? "Kvartal 3" : "Kvartal 4"}
-                  </div>
-                  <div className="p-3 space-y-2">
-                    {r.recommendations.filter(a => a.timeline === q).map((a, idx) => (
-                      <div key={idx} className="text-xs text-gray-600 border-l-2 border-green-400 pl-2 leading-relaxed">{a.title}</div>
-                    ))}
-                    {r.recommendations.filter(a => a.timeline === q).length === 0 && (
-                      <div className="text-xs text-gray-300">—</div>
-                    )}
-                  </div>
-                </div>
+              {sortedRecs.map((rec, i) => (
+                <RecCard key={rec.id ?? i} rec={rec} index={i} />
               ))}
             </div>
-          </div>
+          )}
 
-          {/* Ansvarsfraskrivelse */}
+          {/* ── Section 5b: 12-month quarterly overview ── */}
+          {sortedRecs.length > 0 && (
+            <div className="card">
+              <h2 className="section-title flex items-center gap-2 mb-4">
+                <Map className="w-4 h-4 text-green-500" /> 12-måneders handlingsplan
+              </h2>
+              <div className="grid grid-cols-4 gap-4">
+                {(["Q1", "Q2", "Q3", "Q4"] as const).map(q => {
+                  const qRecs = sortedRecs.filter(a => a.timeline === q)
+                  return (
+                    <div key={q} className="bg-gray-50 rounded-xl overflow-hidden border border-gray-100">
+                      <div className="bg-green-500 px-4 py-2 text-xs font-bold text-white uppercase tracking-wider">
+                        {q === "Q1" ? "Kvartal 1" : q === "Q2" ? "Kvartal 2" : q === "Q3" ? "Kvartal 3" : "Kvartal 4"}
+                      </div>
+                      <div className="p-3 space-y-2">
+                        {qRecs.length > 0 ? qRecs.map((a, idx) => (
+                          <div key={idx} className="flex items-start gap-2">
+                            <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 mt-1.5 ${
+                              a.priority === "high" ? "bg-red-400" : a.priority === "medium" ? "bg-amber-400" : "bg-green-400"
+                            }`} />
+                            <span className="text-xs text-gray-600 leading-relaxed">{a.title}</span>
+                          </div>
+                        )) : (
+                          <div className="text-xs text-gray-300">—</div>
+                        )}
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* ── Section 6: Disclaimer ── */}
           <div className="text-xs text-gray-400 bg-white border border-gray-100 rounded-xl p-4 leading-relaxed">
             <span className="font-semibold text-gray-500">Ansvarsfraskrivelse: </span>{r.disclaimer}
           </div>
