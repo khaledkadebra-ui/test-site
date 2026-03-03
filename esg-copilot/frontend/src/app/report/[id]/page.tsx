@@ -5,10 +5,9 @@ import dynamic from "next/dynamic"
 import { getReportStatus, getReport, getMe, getCompany } from "@/lib/api"
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from "recharts"
 import Sidebar from "@/components/Sidebar"
-import { TrendingUp, Wind, Users, Building2, ArrowLeft, Loader2, Target, Map, ChevronDown, ChevronUp } from "lucide-react"
+import { TrendingUp, Wind, ArrowLeft, Loader2, Target, Map, ChevronDown, ChevronUp } from "lucide-react"
 import type { ReportPdfProps } from "@/components/ReportPdf"
 
-// Dynamic import so @react-pdf/renderer never runs on the server
 const PdfDownloadButton = dynamic(() => import("@/components/PdfDownloadButton"), {
   ssr: false,
   loading: () => (
@@ -22,11 +21,13 @@ const RATING_COLOR: Record<string, string> = { A: "#22c55e", B: "#84cc16", C: "#
 const RATING_BG: Record<string, string>    = { A: "#f0fdf4", B: "#f7fee7", C: "#fefce8", D: "#fff7ed", E: "#fef2f2" }
 const SCOPE_COLORS = ["#22c55e", "#3b82f6", "#a855f7"]
 
-const PRIORITY_CFG: Record<string, { border: string; badge: string; label: string }> = {
-  high:   { border: "border-l-red-400",   badge: "bg-red-50 text-red-700 border-red-200",     label: "Høj prioritet" },
+const PRIORITY_CFG = {
+  high:   { border: "border-l-red-400",   badge: "bg-red-50 text-red-700 border-red-200",       label: "Høj prioritet" },
   medium: { border: "border-l-amber-400", badge: "bg-amber-50 text-amber-700 border-amber-200", label: "Middel prioritet" },
   low:    { border: "border-l-green-400", badge: "bg-green-50 text-green-700 border-green-200", label: "Lav prioritet" },
-}
+} as const
+type PriorityKey = keyof typeof PRIORITY_CFG
+
 const PRIORITY_ORDER: Record<string, number> = { high: 0, medium: 1, low: 2 }
 
 type Rec = {
@@ -57,7 +58,7 @@ type ReportData = {
   completed_at?: string
 }
 
-// ─── Rich Text Renderer ──────────────────────────────────────────────────────
+// ─── Rich Text Renderer ───────────────────────────────────────────────────────
 type Block =
   | { type: "h2";          text: string }
   | { type: "h3";          text: string }
@@ -66,7 +67,7 @@ type Block =
   | { type: "bulletList";  items: string[] }
   | { type: "orderedList"; items: string[] }
 
-function renderInline(text: string) {
+function renderInline(text: string): React.ReactNode[] {
   return text.split(/(\*\*[^*]+\*\*)/).map((chunk, i) =>
     chunk.startsWith("**") && chunk.endsWith("**")
       ? <strong key={i} className="font-semibold text-gray-800">{chunk.slice(2, -2)}</strong>
@@ -82,14 +83,21 @@ function parseToBlocks(raw: string): Block[] {
   while (i < lines.length) {
     const line = lines[i].trim()
     if (!line || line === "---") { i++; continue }
+
     const hm = line.match(/^(#{1,3})\s+(.+)$/)
-    if (hm) { result.push({ type: hm[1].length <= 2 ? "h2" : "h3", text: hm[2].replace(/\*\*/g, "").replace(/\*/g, "") }); i++; continue }
+    if (hm) {
+      result.push({ type: hm[1].length <= 2 ? "h2" : "h3", text: hm[2].replace(/\*\*/g, "").replace(/\*/g, "") })
+      i++; continue
+    }
     const boldLine = line.match(/^\*\*(.+?)\*\*[:\s]*$/)
     if (boldLine) { result.push({ type: "h3", text: boldLine[1] }); i++; continue }
+
     const tiltagM = line.replace(/\*\*/g, "").match(/^Tiltag\s+(\d+)\s*[:\-–—]\s*(.+)$/i)
     if (tiltagM) { result.push({ type: "tiltag", num: parseInt(tiltagM[1]), text: tiltagM[2].trim() }); i++; continue }
+
     const kvartalM = line.replace(/\*\*/g, "").match(/^(Kvartal\s+\d+\s*[—\-–:]\s*.+)$/i)
     if (kvartalM) { result.push({ type: "h2", text: kvartalM[1].replace(/\*\*/g, "").replace(/\*/g, "") }); i++; continue }
+
     if (!line.match(/^[-*•\d]/) && line.length < 72 && !line.match(/[.,;]$/) && (line.includes(" — ") || line.includes(" – "))) {
       result.push({ type: "h2", text: line.replace(/\*\*/g, "").replace(/\*/g, "") }); i++; continue
     }
@@ -108,58 +116,60 @@ function parseToBlocks(raw: string): Block[] {
   return result
 }
 
-function RichText({ text }: { text: string }) {
-  if (!text) return null
+function renderBlock(block: Block, i: number): React.ReactNode {
+  if (block.type === "h2")
+    return <h3 key={i} className="text-sm font-bold text-gray-800 border-b border-gray-100 pb-1.5 mt-4 first:mt-0">{block.text}</h3>
+  if (block.type === "h3")
+    return <p key={i} className="text-[11px] font-semibold uppercase tracking-widest text-gray-400 mt-3 first:mt-0">{block.text}</p>
+  if (block.type === "tiltag")
+    return (
+      <div key={i} className="flex items-start gap-3 mt-5 first:mt-0">
+        <div className="w-6 h-6 rounded-full bg-green-500 flex items-center justify-center flex-shrink-0 mt-0.5">
+          <span className="text-white text-[11px] font-bold">{block.num}</span>
+        </div>
+        <h3 className="text-sm font-semibold text-green-800 leading-snug">{block.text}</h3>
+      </div>
+    )
+  if (block.type === "paragraph")
+    return <p key={i} className="text-sm text-gray-600 leading-relaxed">{renderInline(block.text)}</p>
+  if (block.type === "bulletList")
+    return (
+      <ul key={i} className="space-y-1.5 pl-1">
+        {block.items.map((item, j) => (
+          <li key={j} className="flex gap-2.5 text-sm text-gray-600">
+            <span className="w-1.5 h-1.5 rounded-full bg-green-400 flex-shrink-0 mt-2" />
+            <span className="leading-relaxed">{renderInline(item)}</span>
+          </li>
+        ))}
+      </ul>
+    )
+  // orderedList
   return (
-    <div className="space-y-3">
-      {parseToBlocks(text).map((block, i) => {
-        switch (block.type) {
-          case "h2":        return <h3 key={i} className="text-sm font-bold text-gray-800 border-b border-gray-100 pb-1.5 mt-4 first:mt-0">{block.text}</h3>
-          case "h3":        return <p  key={i} className="text-[11px] font-semibold uppercase tracking-widest text-gray-400 mt-3 first:mt-0">{block.text}</p>
-          case "tiltag":    return (
-            <div key={i} className="flex items-start gap-3 mt-5 first:mt-0">
-              <div className="w-6 h-6 rounded-full bg-green-500 flex items-center justify-center flex-shrink-0 mt-0.5">
-                <span className="text-white text-[11px] font-bold">{block.num}</span>
-              </div>
-              <h3 className="text-sm font-semibold text-green-800 leading-snug">{block.text}</h3>
-            </div>
-          )
-          case "paragraph": return <p key={i} className="text-sm text-gray-600 leading-relaxed">{renderInline(block.text)}</p>
-          case "bulletList": return (
-            <ul key={i} className="space-y-1.5 pl-1">
-              {block.items.map((item, j) => (
-                <li key={j} className="flex gap-2.5 text-sm text-gray-600">
-                  <span className="w-1.5 h-1.5 rounded-full bg-green-400 flex-shrink-0 mt-2" />
-                  <span className="leading-relaxed">{renderInline(item)}</span>
-                </li>
-              ))}
-            </ul>
-          )
-          case "orderedList": return (
-            <ol key={i} className="space-y-1.5 pl-1">
-              {block.items.map((item, j) => (
-                <li key={j} className="flex gap-2.5 text-sm text-gray-600">
-                  <span className="w-5 h-5 rounded-full bg-gray-100 text-gray-500 flex items-center justify-center flex-shrink-0 text-[10px] font-bold mt-0.5 shrink-0">{j + 1}</span>
-                  <span className="leading-relaxed">{renderInline(item)}</span>
-                </li>
-              ))}
-            </ol>
-          )
-        }
-      })}
-    </div>
+    <ol key={i} className="space-y-1.5 pl-1">
+      {block.items.map((item, j) => (
+        <li key={j} className="flex gap-2.5 text-sm text-gray-600">
+          <span className="w-5 h-5 rounded-full bg-gray-100 text-gray-500 flex items-center justify-center flex-shrink-0 text-[10px] font-bold mt-0.5">{j + 1}</span>
+          <span className="leading-relaxed">{renderInline(item)}</span>
+        </li>
+      ))}
+    </ol>
   )
 }
-// ────────────────────────────────────────────────────────────────────────────
 
-// ─── Recommendation Card ─────────────────────────────────────────────────────
+function RichText({ text }: { text: string }) {
+  if (!text) return null
+  return <div className="space-y-3">{parseToBlocks(text).map((b, i) => renderBlock(b, i))}</div>
+}
+// ─────────────────────────────────────────────────────────────────────────────
+
+// ─── Recommendation Card ──────────────────────────────────────────────────────
 function RecCard({ rec, index }: { rec: Rec; index: number }) {
   const [open, setOpen] = useState(false)
-  const p = PRIORITY_CFG[rec.priority] ?? PRIORITY_CFG.medium
+  const pk: PriorityKey = (rec.priority in PRIORITY_CFG ? rec.priority : "medium") as PriorityKey
+  const p = PRIORITY_CFG[pk]
 
   return (
     <div className={`bg-white rounded-2xl border border-gray-100 shadow-sm border-l-4 ${p.border} overflow-hidden`}>
-      {/* Header */}
       <div className="p-5">
         <div className="flex items-start justify-between gap-4">
           <div className="flex items-start gap-3">
@@ -168,9 +178,7 @@ function RecCard({ rec, index }: { rec: Rec; index: number }) {
             </div>
             <div>
               <h3 className="text-sm font-semibold text-gray-800 leading-snug">{rec.title}</h3>
-              {rec.description && (
-                <p className="text-xs text-gray-500 mt-1 leading-relaxed">{rec.description}</p>
-              )}
+              {rec.description && <p className="text-xs text-gray-500 mt-1 leading-relaxed">{rec.description}</p>}
             </div>
           </div>
           <div className="flex items-center gap-2 flex-shrink-0 mt-0.5">
@@ -179,7 +187,6 @@ function RecCard({ rec, index }: { rec: Rec; index: number }) {
           </div>
         </div>
 
-        {/* Impact pills */}
         <div className="flex gap-2 mt-3 pl-10">
           {rec.score_improvement_pts > 0 && (
             <span className="text-[11px] font-medium text-green-700 bg-green-50 border border-green-100 px-2.5 py-0.5 rounded-full">
@@ -198,7 +205,6 @@ function RecCard({ rec, index }: { rec: Rec; index: number }) {
           )}
         </div>
 
-        {/* Expand toggle */}
         <button
           onClick={() => setOpen(o => !o)}
           className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-gray-600 transition-colors mt-3 pl-10"
@@ -208,16 +214,15 @@ function RecCard({ rec, index }: { rec: Rec; index: number }) {
         </button>
       </div>
 
-      {/* Expanded details */}
       {open && (
-        <div className="border-t border-gray-50 bg-gray-50/50 px-5 pb-5 pt-4 pl-[4.5rem] space-y-4">
+        <div className="border-t border-gray-50 bg-gray-50/50 px-5 pb-5 pt-4 space-y-4" style={{ paddingLeft: "4.5rem" }}>
           {rec.smart_goal && (
             <div>
               <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400 mb-1.5">SMART-mål</p>
               <p className="text-xs text-gray-600 leading-relaxed">{rec.smart_goal}</p>
             </div>
           )}
-          {rec.action_steps?.length > 0 && (
+          {rec.action_steps && rec.action_steps.length > 0 && (
             <div>
               <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400 mb-1.5">Handlingstrin</p>
               <ol className="space-y-1.5">
@@ -230,7 +235,7 @@ function RecCard({ rec, index }: { rec: Rec; index: number }) {
               </ol>
             </div>
           )}
-          {rec.kpis?.length > 0 && (
+          {rec.kpis && rec.kpis.length > 0 && (
             <div>
               <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400 mb-1.5">KPI&apos;er</p>
               <div className="flex flex-wrap gap-1.5">
@@ -245,7 +250,7 @@ function RecCard({ rec, index }: { rec: Rec; index: number }) {
     </div>
   )
 }
-// ────────────────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
 
 export default function ReportPage() {
   const { id } = useParams<{ id: string }>()
@@ -277,8 +282,8 @@ export default function ReportPage() {
   if (!report) return <Processing />
 
   const r = report
-  const ratingColor = RATING_COLOR[r.esg_rating] || "#6b7280"
-  const ratingBg    = RATING_BG[r.esg_rating]    || "#f9fafb"
+  const ratingColor = RATING_COLOR[r.esg_rating] ?? "#6b7280"
+  const ratingBg    = RATING_BG[r.esg_rating]    ?? "#f9fafb"
 
   const scopeData = [
     { name: "Scope 1 — Direkte",   value: r.scope1_co2e_tonnes },
@@ -318,9 +323,9 @@ export default function ReportPage() {
   return (
     <div className="flex min-h-screen bg-gray-50">
       <Sidebar />
-
       <div className="ml-60 flex-1 flex flex-col">
-        {/* ── Page header ── */}
+
+        {/* Page header */}
         <div className="bg-white border-b border-gray-100 px-8 py-5 flex items-center justify-between">
           <div className="flex items-center gap-4">
             <button onClick={() => router.push("/dashboard")} className="btn-secondary flex items-center gap-1.5 py-2">
@@ -336,7 +341,7 @@ export default function ReportPage() {
 
         <div className="p-8 space-y-6 max-w-5xl">
 
-          {/* ── Section 1: Hero scorecard ── */}
+          {/* ── 1. Hero scorecard ── */}
           <div className="card p-0 overflow-hidden">
             <div className="flex items-stretch">
 
@@ -360,25 +365,28 @@ export default function ReportPage() {
                 </div>
               </div>
 
-              {/* Divider */}
               <div className="w-px bg-gray-100 flex-shrink-0" />
 
-              {/* E/S/G scores + stats */}
+              {/* E/S/G + stats */}
               <div className="flex-1 px-8 py-7 space-y-4">
                 <div className="space-y-3">
-                  {[
-                    { name: "Miljø",     abbr: "E", value: r.esg_score_e, weight: "50%", color: "#22c55e" },
-                    { name: "Sociale",   abbr: "S", value: r.esg_score_s, weight: "30%", color: "#3b82f6" },
-                    { name: "Lederskab", abbr: "G", value: r.esg_score_g, weight: "20%", color: "#a855f7" },
-                  ].map(({ name, abbr, value, weight, color }) => (
+                  {(
+                    [
+                      { name: "Miljø",     abbr: "E", value: r.esg_score_e, weight: "50%", color: "#22c55e" },
+                      { name: "Sociale",   abbr: "S", value: r.esg_score_s, weight: "30%", color: "#3b82f6" },
+                      { name: "Lederskab", abbr: "G", value: r.esg_score_g, weight: "20%", color: "#a855f7" },
+                    ] as const
+                  ).map(({ name, abbr, value, weight, color }) => (
                     <div key={abbr} className="flex items-center gap-3">
                       <span
                         className="text-[11px] font-bold w-5 h-5 rounded flex items-center justify-center flex-shrink-0"
                         style={{ color, background: `${color}18` }}
                       >{abbr}</span>
-                      <span className="text-xs text-gray-500 w-20 flex-shrink-0">{name} <span className="text-gray-300">({weight})</span></span>
+                      <span className="text-xs text-gray-500 w-20 flex-shrink-0">
+                        {name} <span className="text-gray-300">({weight})</span>
+                      </span>
                       <div className="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                        <div className="h-full rounded-full transition-all" style={{ width: `${value}%`, background: color }} />
+                        <div className="h-full rounded-full" style={{ width: `${value}%`, background: color }} />
                       </div>
                       <span className="text-xs font-semibold text-gray-700 w-14 text-right flex-shrink-0">
                         {value.toFixed(1)}<span className="text-gray-400 font-normal"> / 100</span>
@@ -387,30 +395,29 @@ export default function ReportPage() {
                   ))}
                 </div>
 
-                {/* CO₂ + Percentile stat row */}
                 <div className="flex gap-6 pt-3 border-t border-gray-50">
                   <div>
-                    <div className="text-[10px] font-semibold uppercase tracking-widest text-gray-400 mb-0.5">CO₂-aftryk</div>
-                    <div className="text-xl font-bold text-gray-800">
+                    <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400 mb-0.5">CO₂-aftryk</p>
+                    <p className="text-xl font-bold text-gray-800">
                       {r.total_co2e_tonnes.toFixed(1)}
                       <span className="text-sm font-normal text-gray-400 ml-1">tCO₂e</span>
-                    </div>
+                    </p>
                   </div>
                   <div className="w-px bg-gray-100" />
                   <div>
-                    <div className="text-[10px] font-semibold uppercase tracking-widest text-gray-400 mb-0.5">Brancheplacering</div>
-                    <div className="text-xl font-bold text-gray-800">
+                    <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400 mb-0.5">Brancheplacering</p>
+                    <p className="text-xl font-bold text-gray-800">
                       Bedre end{" "}
                       <span style={{ color: ratingColor }}>{Math.round(r.industry_percentile)}%</span>
                       <span className="text-sm font-normal text-gray-400 ml-1">af branchen</span>
-                    </div>
+                    </p>
                   </div>
                 </div>
               </div>
             </div>
           </div>
 
-          {/* ── Section 2: CO₂ scope chart + ESG score bars ── */}
+          {/* ── 2. CO₂ chart + ESG bars ── */}
           <div className="grid grid-cols-2 gap-5">
             <div className="card">
               <h2 className="section-title flex items-center gap-2">
@@ -418,8 +425,11 @@ export default function ReportPage() {
               </h2>
               <ResponsiveContainer width="100%" height={180}>
                 <PieChart>
-                  <Pie data={scopeData} cx="50%" cy="50%" outerRadius={72} innerRadius={36} dataKey="value"
-                    label={({ percent }) => `${(percent * 100).toFixed(0)}%`} labelLine={false}>
+                  <Pie
+                    data={scopeData} cx="50%" cy="50%" outerRadius={72} innerRadius={36} dataKey="value"
+                    label={({ percent }: { percent: number }) => `${(percent * 100).toFixed(0)}%`}
+                    labelLine={false}
+                  >
                     {scopeData.map((_, i) => <Cell key={i} fill={SCOPE_COLORS[i]} />)}
                   </Pie>
                   <Tooltip formatter={(v: unknown) => [`${(v as number).toFixed(2)} tCO₂e`, ""]} />
@@ -462,7 +472,7 @@ export default function ReportPage() {
             </div>
           </div>
 
-          {/* ── Section 3: Ledelsesoversigt B1 (executive summary) ── */}
+          {/* ── 3. Executive summary ── */}
           <div className="card">
             <h2 className="section-title flex items-center gap-2 mb-4">
               <TrendingUp className="w-4 h-4 text-green-500" /> Ledelsesoversigt (B1)
@@ -470,8 +480,8 @@ export default function ReportPage() {
             <RichText text={r.executive_summary} />
           </div>
 
-          {/* ── Section 4: Identified gaps (conditional) ── */}
-          {r.identified_gaps?.length > 0 && (
+          {/* ── 4. Identified gaps ── */}
+          {r.identified_gaps && r.identified_gaps.length > 0 && (
             <div className="card">
               <h2 className="section-title mb-3">Identificerede mangler</h2>
               <div className="space-y-2">
@@ -485,7 +495,7 @@ export default function ReportPage() {
             </div>
           )}
 
-          {/* ── Section 5: Recommendation cards ── */}
+          {/* ── 5. Recommendation cards ── */}
           {sortedRecs.length > 0 && (
             <div className="space-y-3">
               <div className="flex items-center justify-between">
@@ -495,12 +505,12 @@ export default function ReportPage() {
                 <span className="text-xs text-gray-400">{sortedRecs.length} tiltag · sorteret efter prioritet</span>
               </div>
               {sortedRecs.map((rec, i) => (
-                <RecCard key={rec.id ?? i} rec={rec} index={i} />
+                <RecCard key={rec.id || String(i)} rec={rec} index={i} />
               ))}
             </div>
           )}
 
-          {/* ── Section 5b: 12-month quarterly overview ── */}
+          {/* ── 5b. Quarterly overview ── */}
           {sortedRecs.length > 0 && (
             <div className="card">
               <h2 className="section-title flex items-center gap-2 mb-4">
@@ -533,7 +543,7 @@ export default function ReportPage() {
             </div>
           )}
 
-          {/* ── Section 6: Disclaimer ── */}
+          {/* ── 6. Disclaimer ── */}
           <div className="text-xs text-gray-400 bg-white border border-gray-100 rounded-xl p-4 leading-relaxed">
             <span className="font-semibold text-gray-500">Ansvarsfraskrivelse: </span>{r.disclaimer}
           </div>
