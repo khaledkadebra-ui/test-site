@@ -17,9 +17,9 @@ import anthropic
 
 logger = logging.getLogger(__name__)
 
-MAX_RETRIES = 8
-RETRY_DELAY_SECONDS = 3
-OVERLOAD_DELAY_SECONDS = 20  # 529 needs longer waits
+MAX_RETRIES = 3
+RETRY_DELAY_SECONDS = 2
+OVERLOAD_DELAY_SECONDS = 8  # 529 needs longer waits — but cap total latency for web requests
 
 
 class LLMClient:
@@ -47,9 +47,39 @@ class LLMClient:
         max_tokens: Optional[int] = None,
     ) -> str:
         """
-        Generate narrative text. Retries up to MAX_RETRIES on transient errors.
+        Generate narrative text (single-turn). Retries up to MAX_RETRIES on transient errors.
         Raises RuntimeError if all retries exhausted.
         """
+        return await self._call(
+            system_prompt=system_prompt,
+            messages=[{"role": "user", "content": user_prompt}],
+            max_tokens=max_tokens,
+        )
+
+    async def chat(
+        self,
+        system_prompt: str,
+        history: list[dict],
+        max_tokens: Optional[int] = None,
+    ) -> str:
+        """
+        Multi-turn chat completion. history is a list of {role, content} dicts.
+        The last message must have role="user".
+        Raises RuntimeError if all retries exhausted.
+        """
+        return await self._call(
+            system_prompt=system_prompt,
+            messages=history,
+            max_tokens=max_tokens,
+        )
+
+    async def _call(
+        self,
+        system_prompt: str,
+        messages: list[dict],
+        max_tokens: Optional[int] = None,
+    ) -> str:
+        """Internal: call Anthropic API with retry logic."""
         import asyncio
 
         last_error = None
@@ -60,9 +90,7 @@ class LLMClient:
                     temperature=self.temperature,
                     max_tokens=max_tokens or self.default_max_tokens,
                     system=system_prompt,
-                    messages=[
-                        {"role": "user", "content": user_prompt},
-                    ],
+                    messages=messages,
                 )
                 return response.content[0].text if response.content else ""
 

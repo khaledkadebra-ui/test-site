@@ -66,12 +66,13 @@ class SustainabilityCoachAgent(BaseAgent):
     async def run(self, inputs: dict[str, Any]) -> dict[str, Any]:
         """
         inputs:
-          message: str           — user's question/message in Danish
+          message: str           — user's current question/message in Danish
           history: list[dict]    — prior turns [{role, content}] (optional)
           context: dict          — company context (name, score, etc.) (optional)
         """
-        message   = inputs.get("message", "")
-        context   = inputs.get("context", {})
+        message = inputs.get("message", "")
+        history = inputs.get("history", [])
+        context = inputs.get("context", {})
 
         if not message.strip():
             return {"ok": True, "response": "Hej! Jeg er din ESG Coach. Hvad kan jeg hjælpe dig med?"}
@@ -91,7 +92,16 @@ class SustainabilityCoachAgent(BaseAgent):
         if ctx_lines:
             system += "\n\nVirksomhedens aktuelle status:\n" + "\n".join(ctx_lines)
 
-        response = await self._llm.generate(system, message, max_tokens=600)
+        # Build full message thread: prior history + current user message
+        messages: list[dict[str, str]] = []
+        for turn in history:
+            role = turn.get("role", "user")
+            content = turn.get("content", "")
+            if role in ("user", "assistant") and content:
+                messages.append({"role": role, "content": content})
+        messages.append({"role": "user", "content": message})
+
+        response = await self._llm.chat(system, messages, max_tokens=700)
 
         return {
             "ok":       True,
