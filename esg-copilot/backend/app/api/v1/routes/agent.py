@@ -19,7 +19,7 @@ from typing import Any
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
-from app.api.deps import CurrentUser
+from app.core.deps import CurrentUser
 
 logger = logging.getLogger(__name__)
 
