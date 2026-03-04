@@ -9,7 +9,7 @@
  *   Mangler → Tiltag (høj) → Tiltag (middel/lav) → Handlingsplan → Disclaimer
  */
 import {
-  Document, Page, Text, View, StyleSheet, Svg, Circle, G,
+  Document, Page, Text, View, StyleSheet, Svg, Circle,
 } from "@react-pdf/renderer"
 
 // ── Design tokens ─────────────────────────────────────────────────────────────
@@ -55,7 +55,7 @@ const s = StyleSheet.create({
   coverBrand:{ fontSize: 10, fontWeight: 600, color: C.green, letterSpacing: 1.5, textTransform: "uppercase" as const, marginBottom: 8 },
   coverTitle:{ fontSize: 32, fontWeight: 800, color: C.white, lineHeight: 1.2, marginBottom: 8 },
   coverSub:  { fontSize: 13, color: "#94a3b8", marginBottom: 32 },
-  coverRatingBox: { backgroundColor: "rgba(255,255,255,0.07)", borderRadius: 16, padding: 20, marginBottom: 24, maxWidth: 280 },
+  coverRatingBox: { backgroundColor: "#1a2f40", borderRadius: 16, padding: 20, marginBottom: 24, maxWidth: 280 },
   coverRatingNum: { fontSize: 48, fontWeight: 800, marginBottom: 4 },
   coverRatingLabel: { fontSize: 12, color: "#94a3b8", fontWeight: 400 },
   coverMeta: { fontSize: 10, color: "#64748b", marginTop: 4 },
@@ -181,19 +181,26 @@ function DimBar({ label, score, max, color }: { label: string; score: number; ma
 
 function ScoreRingSvg({ score, max, color, size = 80 }: { score: number; max: number; color: string; size?: number }) {
   const safe = score ?? 0
+  const pct = Math.min(safe / max, 1)
   const sw = 8
   const r = (size - sw * 2) / 2
   const cx = size / 2
   const circ = 2 * Math.PI * r
-  const dash = Math.min(safe / max, 1) * circ
-  const gap = circ - dash
+  // Start from top (rotate -90°): use transform on Circle
+  // strokeDasharray: [filled, gap]
+  const filled = pct * circ
+  const gap    = circ - filled
   return (
     <Svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
-      <Circle cx={cx} cy={cx} r={r} stroke={C.gray100} strokeWidth={sw} fill="none" />
-      <G transform={`rotate(-90, ${cx}, ${cx})`}>
-        <Circle cx={cx} cy={cx} r={r} stroke={color} strokeWidth={sw} fill="none"
-          strokeDasharray={`${dash} ${gap}`} strokeLinecap="round" />
-      </G>
+      {/* Track */}
+      <Circle cx={cx} cy={cx} r={r} stroke={C.gray200} strokeWidth={sw} fill="none" />
+      {/* Progress — drawn from 12-o-clock by starting at top */}
+      <Circle
+        cx={cx} cy={cx} r={r}
+        stroke={color} strokeWidth={sw} fill="none"
+        strokeDasharray={`${filled} ${gap}`}
+        transform={`rotate(-90 ${cx} ${cx})`}
+      />
     </Svg>
   )
 }
@@ -216,9 +223,13 @@ type Rec = {
 
 function RecCard({ rec, index }: { rec: Rec; index: number }) {
   const prioColor = PRIO_COLOR[rec.priority] || C.green
-  const dimColor = rec.category === "E" ? C.emerald : rec.category === "S" ? C.blue : C.violet
+  const dimColor  = rec.category === "E" ? C.emerald : rec.category === "S" ? C.blue : C.violet
+  const dimBg     = rec.category === "E" ? C.greenLight : rec.category === "S" ? C.blueLight : C.violetLight
+  const prioBg    = rec.priority === "high" ? C.redLight : rec.priority === "medium" ? C.amberLight : C.greenLight
   const timelineColors: Record<string, string> = { Q1: "#22c55e", Q2: "#0284c7", Q3: "#7c3aed", Q4: "#f97316" }
+  const timelineBgs:   Record<string, string> = { Q1: C.greenLight, Q2: C.blueLight, Q3: C.violetLight, Q4: C.orangeLight }
   const tlColor = timelineColors[rec.timeline] || C.green
+  const tlBg    = timelineBgs[rec.timeline]    || C.greenLight
 
   return (
     <View style={s.recCard}>
@@ -228,17 +239,17 @@ function RecCard({ rec, index }: { rec: Rec; index: number }) {
             <View style={{ width: 18, height: 18, borderRadius: 9, backgroundColor: C.green, alignItems: "center", justifyContent: "center" }}>
               <Text style={{ fontSize: 8, fontWeight: 700, color: C.white }}>{index + 1}</Text>
             </View>
-            <View style={[s.recBadge, { backgroundColor: dimColor + "20", borderWidth: 1, borderColor: dimColor + "40" }]}>
+            <View style={[s.recBadge, { backgroundColor: dimBg }]}>
               <Text style={{ fontSize: 7.5, fontWeight: 700, color: dimColor }}>
                 {rec.category === "E" ? "Miljø" : rec.category === "S" ? "Sociale" : "Ledelse"}
               </Text>
             </View>
-            <View style={[s.recBadge, { backgroundColor: prioColor + "15", borderWidth: 1, borderColor: prioColor + "40" }]}>
+            <View style={[s.recBadge, { backgroundColor: prioBg }]}>
               <Text style={{ fontSize: 7.5, fontWeight: 700, color: prioColor }}>
                 {rec.priority === "high" ? "Høj" : rec.priority === "medium" ? "Middel" : "Lav"}
               </Text>
             </View>
-            <View style={[s.recBadge, { backgroundColor: tlColor + "20", borderWidth: 1, borderColor: tlColor + "30" }]}>
+            <View style={[s.recBadge, { backgroundColor: tlBg }]}>
               <Text style={{ fontSize: 7.5, fontWeight: 700, color: tlColor }}>{rec.timeline}</Text>
             </View>
           </View>
