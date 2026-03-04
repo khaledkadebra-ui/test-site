@@ -1,18 +1,16 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /**
- * ReportPdf.tsx — Professional VSME ESG Report PDF template
+ * ReportPdf.tsx — Professional VSME ESG Report PDF
+ * Follows VSME Basic Module (EFRAG 2024) structure exactly.
  * Uses @react-pdf/renderer — rendered entirely in the browser, no server needed.
  *
- * Layout inspired by professional ESG/sustainability reports:
- * Cover → ToC → B1 Ledelse → B3 CO₂ → ESG Scores → Mangler → Tiltag → Handlingsplan → Disclaimer
+ * Structure (per VSME Basic Module):
+ *   Cover → ToC → B1 Ledelse → B3 CO₂/Energi → B2 ESG-scorecard →
+ *   Mangler → Tiltag (høj) → Tiltag (middel/lav) → Handlingsplan → Disclaimer
  */
 import {
-  Document, Page, Text, View, StyleSheet, Svg, Circle, Rect, G,
+  Document, Page, Text, View, StyleSheet, Svg, Circle, G,
 } from "@react-pdf/renderer"
-
-// No custom font registration — use built-in Helvetica so PDF generation
-// works without any network requests. react-pdf maps fontWeight: 700 →
-// Helvetica-Bold automatically for all built-in fonts.
 
 // ── Design tokens ─────────────────────────────────────────────────────────────
 const C = {
@@ -47,14 +45,11 @@ const RATING_COLOR: Record<string, string> = {
 const RATING_LABEL: Record<string, string> = {
   A: "Fremragende", B: "Godt", C: "Middel", D: "Under middel", E: "Kritisk",
 }
-const DIM_COLOR = { E: C.emerald, S: C.blue, G: C.violet }
 const PRIO_COLOR: Record<string, string> = { high: C.red, medium: C.amber, low: C.green }
 
 // ── Styles ────────────────────────────────────────────────────────────────────
 const s = StyleSheet.create({
   page: { fontFamily: "Helvetica", fontSize: 9, color: C.gray700, backgroundColor: C.white, paddingTop: 0, paddingBottom: 48 },
-
-  // Cover
   coverPage: { fontFamily: "Helvetica", backgroundColor: C.sidebar, padding: 0 },
   coverTop:  { backgroundColor: C.sidebar, flex: 1, padding: 56, justifyContent: "space-between" },
   coverBrand:{ fontSize: 10, fontWeight: 600, color: C.green, letterSpacing: 1.5, textTransform: "uppercase" as const, marginBottom: 8 },
@@ -66,65 +61,44 @@ const s = StyleSheet.create({
   coverMeta: { fontSize: 10, color: "#64748b", marginTop: 4 },
   coverBottom: { backgroundColor: "#0a1825", padding: 24, paddingLeft: 56, flexDirection: "row" as const, justifyContent: "space-between" as const, alignItems: "center" as const },
   coverBottomText: { fontSize: 9, color: "#475569" },
-
-  // Page chrome
   pageHeader: { backgroundColor: C.green, height: 4 },
   pageFooter: { position: "absolute" as const, bottom: 0, left: 0, right: 0, paddingHorizontal: 40, paddingVertical: 14, flexDirection: "row" as const, justifyContent: "space-between" as const, borderTopWidth: 1, borderTopColor: C.gray200 },
   pageFooterText: { fontSize: 7.5, color: C.gray400 },
   pageBody: { paddingHorizontal: 40, paddingTop: 28 },
-
-  // Section headers
   sectionBadge: { fontSize: 7.5, fontWeight: 700, letterSpacing: 1.2, textTransform: "uppercase" as const, color: C.green, marginBottom: 4 },
   sectionTitle: { fontSize: 15, fontWeight: 800, color: C.gray900, marginBottom: 12 },
   sectionSub:   { fontSize: 9, color: C.gray400, marginBottom: 14 },
-
-  // Cards
   card:         { backgroundColor: C.white, borderRadius: 8, borderWidth: 1, borderColor: C.gray200, padding: 14, marginBottom: 12 },
   cardTitle:    { fontSize: 9, fontWeight: 700, color: C.gray900, marginBottom: 6, textTransform: "uppercase" as const, letterSpacing: 0.8 },
   cardHighlight:{ backgroundColor: C.gray50, borderRadius: 8, padding: 12, marginBottom: 10 },
-
-  // Text
   body:    { fontSize: 9, color: C.gray700, lineHeight: 1.6 },
   bodyMd:  { fontSize: 9.5, color: C.gray700, lineHeight: 1.65 },
   small:   { fontSize: 8, color: C.gray400 },
   caption: { fontSize: 7.5, color: C.gray400, fontStyle: "italic" as const },
-
-  // KPI grid
   kpiGrid: { flexDirection: "row" as const, gap: 10, marginBottom: 20 },
   kpiBox:  { flex: 1, backgroundColor: C.white, borderRadius: 10, borderWidth: 1, borderColor: C.gray200, padding: 14, alignItems: "center" as const },
   kpiNum:  { fontSize: 26, fontWeight: 800, color: C.gray900, marginBottom: 2 },
   kpiLabel:{ fontSize: 7.5, color: C.gray400, fontWeight: 600, letterSpacing: 0.8, textTransform: "uppercase" as const, textAlign: "center" as const },
-
-  // Scope bar
   scopeRow:   { flexDirection: "row" as const, alignItems: "center" as const, marginBottom: 8 },
   scopeLabel: { width: 120, fontSize: 8.5, color: C.gray700, fontWeight: 600 },
   scopeTrack: { flex: 1, height: 7, backgroundColor: C.gray100, borderRadius: 4, overflow: "hidden" as const },
   scopeFill:  { height: 7, borderRadius: 4 },
   scopeValue: { width: 46, fontSize: 8.5, color: C.gray700, fontWeight: 700, textAlign: "right" as const },
-
-  // Rec card
-  recCard:      { borderRadius: 8, borderWidth: 1, borderColor: C.gray200, marginBottom: 10, overflow: "hidden" as const },
-  recHeader:    { padding: 10, paddingLeft: 12 },
-  recTitle:     { fontSize: 9.5, fontWeight: 700, color: C.gray900, marginBottom: 4 },
-  recDesc:      { fontSize: 8.5, color: C.gray600, lineHeight: 1.5 },
-  recMeta:      { flexDirection: "row" as const, gap: 8, marginTop: 6 },
-  recBadge:     { borderRadius: 4, paddingHorizontal: 6, paddingVertical: 2, fontSize: 7.5, fontWeight: 700 },
-  recSteps:     { backgroundColor: C.gray50, padding: 10, paddingLeft: 14 },
-  recStep:      { flexDirection: "row" as const, gap: 8, marginBottom: 5 },
-  recStepNum:   { width: 14, height: 14, backgroundColor: C.green, borderRadius: 7, alignItems: "center" as const, justifyContent: "center" as const, flexShrink: 0, marginTop: 1 },
-  recStepNumTxt:{ fontSize: 7, color: C.white, fontWeight: 700 },
-  recStepTxt:   { fontSize: 8, color: C.gray700, lineHeight: 1.5, flex: 1 },
+  recCard:    { borderRadius: 8, borderWidth: 1, borderColor: C.gray200, marginBottom: 10, overflow: "hidden" as const },
+  recHeader:  { padding: 10, paddingLeft: 12 },
+  recTitle:   { fontSize: 9.5, fontWeight: 700, color: C.gray900, marginBottom: 4 },
+  recDesc:    { fontSize: 8.5, color: C.gray600, lineHeight: 1.5 },
+  recBadge:   { borderRadius: 4, paddingHorizontal: 6, paddingVertical: 2, fontSize: 7.5, fontWeight: 700 },
+  recSteps:   { backgroundColor: C.gray50, padding: 10, paddingLeft: 14 },
+  recStep:    { flexDirection: "row" as const, gap: 8, marginBottom: 5 },
+  recStepNum: { width: 14, height: 14, backgroundColor: C.green, borderRadius: 7, alignItems: "center" as const, justifyContent: "center" as const, flexShrink: 0, marginTop: 1 },
+  recStepNumTxt: { fontSize: 7, color: C.white, fontWeight: 700 },
+  recStepTxt: { fontSize: 8, color: C.gray700, lineHeight: 1.5, flex: 1 },
   recSmartBox:  { backgroundColor: "#f0fdf4", borderRadius: 4, padding: 8, marginTop: 8 },
   recSmartLabel:{ fontSize: 7.5, fontWeight: 700, color: C.emerald, marginBottom: 2, textTransform: "uppercase" as const, letterSpacing: 0.6 },
   recSmartTxt:  { fontSize: 8, color: "#166534", lineHeight: 1.4 },
-
-  // Gap
   gapRow: { flexDirection: "row" as const, alignItems: "flex-start" as const, marginBottom: 8, paddingBottom: 8, borderBottomWidth: 1, borderBottomColor: C.gray100 },
   gapDot: { width: 8, height: 8, borderRadius: 4, marginTop: 3, marginRight: 10, flexShrink: 0 },
-  gapTitle: { fontSize: 9, fontWeight: 700, color: C.gray900, marginBottom: 2 },
-  gapDesc:  { fontSize: 8, color: C.gray600, lineHeight: 1.5 },
-
-  // Q roadmap
   qGrid: { flexDirection: "row" as const, gap: 8 },
   qCol:  { flex: 1, borderRadius: 8, overflow: "hidden" as const, borderWidth: 1, borderColor: C.gray200 },
   qHead: { padding: 8, paddingHorizontal: 10 },
@@ -136,25 +110,20 @@ const s = StyleSheet.create({
   qItemText: { fontSize: 7.5, color: C.gray700, lineHeight: 1.4, flex: 1 },
   qTotal: { backgroundColor: C.gray50, padding: 6, paddingHorizontal: 10, borderTopWidth: 1, borderTopColor: C.gray100 },
   qTotalText: { fontSize: 7.5, color: C.green, fontWeight: 700, textAlign: "right" as const },
-
-  // ToC
   tocRow: { flexDirection: "row" as const, justifyContent: "space-between" as const, alignItems: "flex-end" as const, marginBottom: 10, paddingBottom: 10, borderBottomWidth: 1, borderBottomColor: C.gray100 },
   tocTitle: { fontSize: 10, color: C.gray700 },
   tocPage:  { fontSize: 8, color: C.gray400 },
-
-  // Divider
   divider: { borderTopWidth: 1, borderTopColor: C.gray200, marginVertical: 16 },
-  spacer:  { height: 16 },
 })
 
-// ── Helper components ─────────────────────────────────────────────────────────
+// ── Helpers ───────────────────────────────────────────────────────────────────
 
 function PageHeader({ companyName, section }: { companyName: string; section: string }) {
   return (
     <>
       <View style={s.pageHeader} />
       <View style={{ paddingHorizontal: 40, paddingVertical: 10, flexDirection: "row", justifyContent: "space-between", borderBottomWidth: 1, borderBottomColor: C.gray100, backgroundColor: C.gray50 }}>
-        <Text style={{ fontSize: 8, color: C.gray400, fontWeight: 600 }}>{companyName} · VSME ESG-rapport</Text>
+        <Text style={{ fontSize: 8, color: C.gray400, fontWeight: 600 }}>{companyName} · VSME Basic Module ESG-rapport</Text>
         <Text style={{ fontSize: 8, color: C.green, fontWeight: 700 }}>{section}</Text>
       </View>
     </>
@@ -164,7 +133,7 @@ function PageHeader({ companyName, section }: { companyName: string; section: st
 function PageFooter({ page, companyName, year }: { page: string; companyName: string; year: number }) {
   return (
     <View style={s.pageFooter}>
-      <Text style={s.pageFooterText}>© {year} {companyName} · Genereret af ESG Copilot AI</Text>
+      <Text style={s.pageFooterText}>© {year} {companyName} · ESG Copilot AI · iht. VSME Basic Module (EFRAG 2024)</Text>
       <Text style={s.pageFooterText}>{page}</Text>
     </View>
   )
@@ -181,25 +150,27 @@ function SectionHeading({ badge, title, sub }: { badge: string; title: string; s
 }
 
 function ScopeBar({ label, tonnes, max, color }: { label: string; tonnes: number; max: number; color: string }) {
-  const pct = max > 0 ? Math.min((tonnes / max) * 100, 100) : 0
+  const safe = tonnes ?? 0
+  const pct = max > 0 ? Math.min((safe / max) * 100, 100) : 0
   return (
     <View style={s.scopeRow}>
       <Text style={s.scopeLabel}>{label}</Text>
       <View style={s.scopeTrack}>
         <View style={[s.scopeFill, { width: `${pct}%`, backgroundColor: color }]} />
       </View>
-      <Text style={s.scopeValue}>{tonnes.toFixed(1)} t</Text>
+      <Text style={s.scopeValue}>{safe.toFixed(2)} t</Text>
     </View>
   )
 }
 
 function DimBar({ label, score, max, color }: { label: string; score: number; max: number; color: string }) {
-  const pct = Math.min((score / max) * 100, 100)
+  const safe = score ?? 0
+  const pct = Math.min((safe / max) * 100, 100)
   return (
     <View style={{ marginBottom: 12 }}>
       <View style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: 4 }}>
         <Text style={{ fontSize: 9, fontWeight: 700, color: C.gray700 }}>{label}</Text>
-        <Text style={{ fontSize: 9, fontWeight: 800, color }}>{score.toFixed(1)} / {max}</Text>
+        <Text style={{ fontSize: 9, fontWeight: 800, color }}>{safe.toFixed(1)} / {max}</Text>
       </View>
       <View style={{ height: 8, backgroundColor: C.gray100, borderRadius: 4, overflow: "hidden" }}>
         <View style={{ height: 8, borderRadius: 4, backgroundColor: color, width: `${pct}%` }} />
@@ -209,77 +180,96 @@ function DimBar({ label, score, max, color }: { label: string; score: number; ma
 }
 
 function ScoreRingSvg({ score, max, color, size = 80 }: { score: number; max: number; color: string; size?: number }) {
+  const safe = score ?? 0
   const sw = 8
-  const r  = (size - sw * 2) / 2
+  const r = (size - sw * 2) / 2
   const cx = size / 2
   const circ = 2 * Math.PI * r
-  const dash = Math.min(score / max, 1) * circ
-  const gap  = circ - dash
+  const dash = Math.min(safe / max, 1) * circ
+  const gap = circ - dash
   return (
     <Svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
       <Circle cx={cx} cy={cx} r={r} stroke={C.gray100} strokeWidth={sw} fill="none" />
       <G transform={`rotate(-90, ${cx}, ${cx})`}>
-        <Circle
-          cx={cx} cy={cx} r={r}
-          stroke={color} strokeWidth={sw} fill="none"
-          strokeDasharray={`${dash} ${gap}`}
-          strokeLinecap="round"
-        />
+        <Circle cx={cx} cy={cx} r={r} stroke={color} strokeWidth={sw} fill="none"
+          strokeDasharray={`${dash} ${gap}`} strokeLinecap="round" />
       </G>
     </Svg>
   )
 }
 
+/** Strip markdown markers for plain PDF rendering */
+function stripMd(text: string): string {
+  if (!text) return ""
+  return text
+    .replace(/^#{1,3}\s+/gm, "")
+    .replace(/\*\*([^*]+)\*\*/g, "$1")
+    .replace(/\*([^*]+)\*/g, "$1")
+    .trim()
+}
+
 type Rec = {
   id: string; title: string; description: string; effort: string; category: string;
   priority: string; timeline: string; smart_goal: string; action_steps: string[];
-  score_improvement_pts: number; estimated_co2_reduction_pct: number;
+  score_improvement_pts: number; estimated_co2_reduction_pct: number; kpis?: string[];
 }
 
-function RecCard({ rec }: { rec: Rec }) {
-  const dimColor = (DIM_COLOR as any)[rec.category] || C.green
-  const prioColor = (PRIO_COLOR as any)[rec.priority] || C.green
-  const effortLabel: Record<string, string> = { low: "Lav indsats", medium: "Middel indsats", high: "Høj indsats" }
-  const timelineHeader = { Q1: "#22c55e", Q2: "#0284c7", Q3: "#7c3aed", Q4: "#f97316" }
-  const headerBg = (timelineHeader as any)[rec.timeline] || C.green
+function RecCard({ rec, index }: { rec: Rec; index: number }) {
+  const prioColor = PRIO_COLOR[rec.priority] || C.green
+  const dimColor = rec.category === "E" ? C.emerald : rec.category === "S" ? C.blue : C.violet
+  const timelineColors: Record<string, string> = { Q1: "#22c55e", Q2: "#0284c7", Q3: "#7c3aed", Q4: "#f97316" }
+  const tlColor = timelineColors[rec.timeline] || C.green
 
   return (
     <View style={s.recCard}>
       <View style={[s.recHeader, { borderLeftWidth: 3, borderLeftColor: dimColor }]}>
         <View style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: 6 }}>
-          <View style={{ flexDirection: "row", gap: 5 }}>
+          <View style={{ flexDirection: "row", gap: 5, alignItems: "center" }}>
+            <View style={{ width: 18, height: 18, borderRadius: 9, backgroundColor: C.green, alignItems: "center", justifyContent: "center" }}>
+              <Text style={{ fontSize: 8, fontWeight: 700, color: C.white }}>{index + 1}</Text>
+            </View>
             <View style={[s.recBadge, { backgroundColor: dimColor + "20", borderWidth: 1, borderColor: dimColor + "40" }]}>
               <Text style={{ fontSize: 7.5, fontWeight: 700, color: dimColor }}>
-                { rec.category === "E" ? "Miljø" : rec.category === "S" ? "Sociale" : "Ledelse" }
+                {rec.category === "E" ? "Miljø" : rec.category === "S" ? "Sociale" : "Ledelse"}
               </Text>
             </View>
             <View style={[s.recBadge, { backgroundColor: prioColor + "15", borderWidth: 1, borderColor: prioColor + "40" }]}>
               <Text style={{ fontSize: 7.5, fontWeight: 700, color: prioColor }}>
-                { rec.priority === "high" ? "Høj" : rec.priority === "medium" ? "Middel" : "Lav" }
+                {rec.priority === "high" ? "Høj" : rec.priority === "medium" ? "Middel" : "Lav"}
               </Text>
             </View>
-            <View style={[s.recBadge, { backgroundColor: headerBg + "20", borderWidth: 1, borderColor: headerBg + "30" }]}>
-              <Text style={{ fontSize: 7.5, fontWeight: 700, color: headerBg }}>{rec.timeline}</Text>
+            <View style={[s.recBadge, { backgroundColor: tlColor + "20", borderWidth: 1, borderColor: tlColor + "30" }]}>
+              <Text style={{ fontSize: 7.5, fontWeight: 700, color: tlColor }}>{rec.timeline}</Text>
             </View>
           </View>
-          <View style={{ flexDirection: "row", gap: 10 }}>
-            <Text style={{ fontSize: 8, fontWeight: 700, color: C.green }}>+{rec.score_improvement_pts} pt</Text>
-            {rec.estimated_co2_reduction_pct > 0 && (
-              <Text style={{ fontSize: 8, fontWeight: 700, color: C.emerald }}>-{rec.estimated_co2_reduction_pct}% CO₂</Text>
+          <View style={{ flexDirection: "row", gap: 8 }}>
+            {(rec.score_improvement_pts ?? 0) > 0 && (
+              <Text style={{ fontSize: 8, fontWeight: 700, color: C.green }}>+{(rec.score_improvement_pts ?? 0).toFixed(1)} pt</Text>
             )}
-            <Text style={{ fontSize: 8, color: C.gray400 }}>{effortLabel[rec.effort] || rec.effort}</Text>
+            {(rec.estimated_co2_reduction_pct ?? 0) > 0 && (
+              <Text style={{ fontSize: 8, fontWeight: 700, color: C.emerald }}>−{rec.estimated_co2_reduction_pct}% CO₂</Text>
+            )}
           </View>
         </View>
         <Text style={s.recTitle}>{rec.title}</Text>
-        <Text style={s.recDesc}>{rec.description}</Text>
+        {rec.description && <Text style={s.recDesc}>{rec.description}</Text>}
         {rec.smart_goal && (
           <View style={s.recSmartBox}>
             <Text style={s.recSmartLabel}>SMART-mål</Text>
             <Text style={s.recSmartTxt}>{rec.smart_goal}</Text>
           </View>
         )}
+        {rec.kpis && rec.kpis.length > 0 && (
+          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 4, marginTop: 6 }}>
+            {rec.kpis.slice(0, 4).map((kpi, i) => (
+              <View key={i} style={{ backgroundColor: C.gray100, borderRadius: 4, paddingHorizontal: 5, paddingVertical: 2 }}>
+                <Text style={{ fontSize: 7, color: C.gray600 }}>{kpi}</Text>
+              </View>
+            ))}
+          </View>
+        )}
       </View>
-      {rec.action_steps?.length > 0 && (
+      {rec.action_steps && rec.action_steps.length > 0 && (
         <View style={s.recSteps}>
           <Text style={{ fontSize: 7.5, fontWeight: 700, color: C.gray400, marginBottom: 6, textTransform: "uppercase", letterSpacing: 0.6 }}>Handlingstrin</Text>
           {rec.action_steps.slice(0, 5).map((step, i) => (
@@ -323,58 +313,59 @@ export interface ReportPdfProps {
 }
 
 export function ReportPdfDocument(props: ReportPdfProps) {
-  const {
-    companyName, reportYear, reportDate, esgRating, esgScoreTotal,
-    esgScoreE, esgScoreS, esgScoreG, industryPercentile,
-    totalCo2Tonnes, scope1Co2Tonnes, scope2Co2Tonnes, scope3Co2Tonnes,
-    executiveSummary, co2Narrative, esgNarrative, improvementsNarrative,
-    disclaimer, industryCode, countryCode,
-  } = props
+  const { companyName, reportYear, reportDate, esgRating, executiveSummary, co2Narrative, esgNarrative, disclaimer, industryCode, countryCode } = props
 
-  // Null-safe arrays — PDF generation crashes if these are null/undefined
+  // ── Null-safe numeric fields ──────────────────────────────────────────────
+  const esgScoreTotal     = props.esgScoreTotal     ?? 0
+  const esgScoreE         = props.esgScoreE         ?? 0
+  const esgScoreS         = props.esgScoreS         ?? 0
+  const esgScoreG         = props.esgScoreG         ?? 0
+  const industryPercentile = props.industryPercentile ?? 0
+  const totalCo2Tonnes    = props.totalCo2Tonnes    ?? 0
+  const scope1Co2Tonnes   = props.scope1Co2Tonnes   ?? 0
+  const scope2Co2Tonnes   = props.scope2Co2Tonnes   ?? 0
+  const scope3Co2Tonnes   = props.scope3Co2Tonnes   ?? 0
+
+  // ── Null-safe arrays ──────────────────────────────────────────────────────
   const identifiedGaps  = props.identifiedGaps  ?? []
   const recommendations = props.recommendations ?? []
 
-  const rColor = RATING_COLOR[esgRating] || C.gray600
-  const year   = reportYear
-  const dateStr = reportDate ? new Date(reportDate).toLocaleDateString("da-DK", { year: "numeric", month: "long", day: "numeric" }) : ""
-  const maxCo2  = Math.max(scope1Co2Tonnes ?? 0, scope2Co2Tonnes ?? 0, scope3Co2Tonnes ?? 0, 0.01)
+  const rColor   = RATING_COLOR[esgRating] || C.gray600
+  const year     = reportYear
+  const dateStr  = reportDate ? new Date(reportDate).toLocaleDateString("da-DK", { year: "numeric", month: "long", day: "numeric" }) : ""
+  const maxCo2   = Math.max(scope1Co2Tonnes, scope2Co2Tonnes, scope3Co2Tonnes, 0.01)
 
-  // Simple gap list
-  const gapList = identifiedGaps.slice(0, 14)
-
-  const recsHigh   = recommendations.filter(r => r.priority === "high").slice(0, 6)
-  const recsOthers = recommendations.filter(r => r.priority !== "high").slice(0, 4)
+  const gapList    = identifiedGaps.slice(0, 14)
+  const recsHigh   = recommendations.filter(r => r.priority === "high").slice(0, 5)
+  const recsOthers = recommendations.filter(r => r.priority !== "high").slice(0, 5)
 
   const qColors: Record<string, string> = { Q1: "#22c55e", Q2: "#0284c7", Q3: "#7c3aed", Q4: "#f97316" }
-  const qLabels: Record<string, string> = { Q1: "Kvartal 1\nJan–Mar", Q2: "Kvartal 2\nApr–Jun", Q3: "Kvartal 3\nJul–Sep", Q4: "Kvartal 4\nOkt–Dec" }
+  const qSubs: Record<string, string>   = { Q1: "Jan–Mar", Q2: "Apr–Jun", Q3: "Jul–Sep", Q4: "Okt–Dec" }
+  const qTitles: Record<string, string> = { Q1: "Kvartal 1", Q2: "Kvartal 2", Q3: "Kvartal 3", Q4: "Kvartal 4" }
 
   return (
     <Document
       title={`${companyName} VSME ESG-rapport ${year}`}
       author="ESG Copilot"
-      subject="VSME Basic Module ESG-rapport"
-      keywords="ESG VSME bæredygtighed CO2 klimaaftryk"
+      subject="VSME Basic Module Bæredygtighedsrapport (EFRAG 2024)"
+      keywords="ESG VSME bæredygtighed CO2 klimaaftryk EFRAG GHG Protocol"
     >
 
       {/* ── PAGE 1: Cover ──────────────────────────────────────────────────── */}
       <Page size="A4" style={s.coverPage}>
         <View style={s.coverTop}>
-          {/* Brand */}
           <View>
-            <Text style={s.coverBrand}>ESG Copilot · AI-genereret rapport</Text>
+            <Text style={s.coverBrand}>ESG Copilot · VSME Basic Module · EFRAG 2024</Text>
             <Text style={{ fontSize: 12, color: "#64748b", marginBottom: 48 }}>
               {industryCode || "Virksomhed"} · {countryCode || "DK"}
             </Text>
-
-            {/* Rating badge */}
             <View style={[s.coverRatingBox, { borderLeftWidth: 4, borderLeftColor: rColor }]}>
               <Text style={[s.coverRatingNum, { color: rColor }]}>{esgRating}</Text>
               <Text style={{ fontSize: 14, fontWeight: 700, color: C.white, marginBottom: 4 }}>
                 {RATING_LABEL[esgRating] || "ESG-vurdering"}
               </Text>
               <Text style={s.coverRatingLabel}>
-                ESG Score: {esgScoreTotal.toFixed(1)} / 100 · {totalCo2Tonnes.toFixed(1)} tCO₂e total
+                ESG Score: {esgScoreTotal.toFixed(1)} / 100  ·  {totalCo2Tonnes.toFixed(1)} tCO₂e
               </Text>
               {industryPercentile > 0 && (
                 <Text style={[s.coverRatingLabel, { marginTop: 4 }]}>
@@ -382,26 +373,19 @@ export function ReportPdfDocument(props: ReportPdfProps) {
                 </Text>
               )}
             </View>
-
-            {/* Titles */}
             <Text style={s.coverTitle}>{companyName}</Text>
             <Text style={s.coverSub}>VSME Bæredygtighedsrapport {year}</Text>
-            <Text style={{ fontSize: 11, color: "#64748b" }}>
-              iht. VSME Basic Module · EFRAG 2024
-            </Text>
+            <Text style={{ fontSize: 11, color: "#64748b" }}>iht. VSME Basic Module · EFRAG 2024 · GHG Protocol</Text>
           </View>
-
-          {/* Bottom metadata */}
           <View>
             <Text style={s.coverMeta}>Genereret: {dateStr}</Text>
             <Text style={s.coverMeta}>Rapportperiode: {year} (1. jan – 31. dec)</Text>
           </View>
         </View>
-
         <View style={s.coverBottom}>
           <View>
             <Text style={[s.coverBottomText, { fontWeight: 700, color: "#94a3b8" }]}>ESG Copilot</Text>
-            <Text style={s.coverBottomText}>AI-drevet ESG-rapportering og klimaanalyse</Text>
+            <Text style={s.coverBottomText}>AI-drevet VSME ESG-rapportering</Text>
           </View>
           <View style={{ alignItems: "flex-end" }}>
             <Text style={s.coverBottomText}>esg-copilot-app.vercel.app</Text>
@@ -410,39 +394,35 @@ export function ReportPdfDocument(props: ReportPdfProps) {
         </View>
       </Page>
 
-      {/* ── PAGE 2: Table of contents ──────────────────────────────────────── */}
+      {/* ── PAGE 2: ToC ────────────────────────────────────────────────────── */}
       <Page size="A4" style={s.page}>
         <PageHeader companyName={companyName} section="Indholdsfortegnelse" />
         <View style={s.pageBody}>
           <SectionHeading badge="Indholdsfortegnelse" title="Oversigt over rapporten" />
-
           {[
-            { num: "B1",  title: "Ledelsesoversigt og virksomhedsprofil",                  pg: 3  },
-            { num: "B3",  title: "Klimaaftryk og CO₂-emissioner (Scope 1, 2 og 3)",        pg: 4  },
-            { num: "B2",  title: "ESG-score og præstationsoversigt",                       pg: 5  },
-            { num: "B8–10", title: "Medarbejderforhold og sociale indikatorer",            pg: 6  },
-            { num: "B11", title: "Governance og politikker",                               pg: 6  },
-            { num: "—",   title: "Identificerede mangler",                                 pg: 7  },
-            { num: "—",   title: "Anbefalede tiltag og forbedringer",                      pg: 8  },
-            { num: "—",   title: "12-måneders handlingsplan",                              pg: 9  },
-            { num: "—",   title: "Ansvarsfraskrivelse og metode",                          pg: 10 },
+            { num: "B1",      title: "Ledelsesoversigt og virksomhedsprofil",          pg: 3 },
+            { num: "B3",      title: "Klimaaftryk og CO₂-emissioner (Scope 1, 2, 3)",  pg: 4 },
+            { num: "B2",      title: "Samlet ESG-scorecard",                            pg: 5 },
+            { num: "—",       title: "Identificerede mangler og compliance-gaps",       pg: 6 },
+            { num: "—",       title: "Anbefalede tiltag — høj prioritet",              pg: 7 },
+            { num: "—",       title: "Anbefalede tiltag — middel og lav prioritet",    pg: 8 },
+            { num: "—",       title: "12-måneders handlingsplan pr. kvartal",           pg: 9 },
+            { num: "—",       title: "Emissionsfaktorer, metode og ansvarsfraskrivelse",pg: 10 },
           ].map((row, i) => (
             <View key={i} style={s.tocRow}>
               <View style={{ flexDirection: "row", gap: 14, flex: 1 }}>
-                <Text style={{ fontSize: 9, fontWeight: 700, color: C.green, minWidth: 30 }}>{row.num}</Text>
+                <Text style={{ fontSize: 9, fontWeight: 700, color: C.green, minWidth: 36 }}>{row.num}</Text>
                 <Text style={s.tocTitle}>{row.title}</Text>
               </View>
               <Text style={s.tocPage}>{row.pg}</Text>
             </View>
           ))}
-
           <View style={[s.cardHighlight, { marginTop: 24 }]}>
             <Text style={[s.sectionBadge, { marginBottom: 6 }]}>Om denne rapport</Text>
             <Text style={s.bodyMd}>
-              Denne rapport er udarbejdet i henhold til VSME Basic Module (EFRAG, 2024) og dækker
-              indberetningsperioden 1. januar – 31. december {year}. CO₂-beregninger er foretaget
-              iht. GHG Protocol Corporate Standard med emissionsfaktorer fra Energistyrelsen 2024
-              (el, fjernvarme) og DEFRA 2024 (brændstoffer, transport).
+              Rapporten er udarbejdet iht. VSME Basic Module (EFRAG, 2024) og dækker 1. januar – 31. december {year}.
+              CO₂-beregninger følger GHG Protocol Corporate Standard med emissionsfaktorer fra
+              Energistyrelsen 2024 (el, fjernvarme) og DEFRA 2024 (brændstoffer, transport, fly).
             </Text>
           </View>
         </View>
@@ -458,40 +438,38 @@ export function ReportPdfDocument(props: ReportPdfProps) {
             title="Virksomhedsprofil og sammenfatning"
             sub="VSME Basic Module, afsnit B1 — Generelle oplysninger og kontekst"
           />
-
-          {/* KPI grid */}
           <View style={s.kpiGrid}>
             <View style={[s.kpiBox, { borderTopWidth: 3, borderTopColor: rColor }]}>
-              <View style={{ marginBottom: 6 }}>
-                <ScoreRingSvg score={esgScoreTotal} max={100} color={rColor} size={72} />
-              </View>
-              <Text style={[s.kpiNum, { color: rColor, fontSize: 20 }]}>{esgRating}</Text>
+              <ScoreRingSvg score={esgScoreTotal} max={100} color={rColor} size={72} />
+              <Text style={[s.kpiNum, { color: rColor, fontSize: 20, marginTop: 4 }]}>{esgRating}</Text>
               <Text style={s.kpiLabel}>ESG Rating</Text>
             </View>
             <View style={[s.kpiBox, { borderTopWidth: 3, borderTopColor: C.green }]}>
-              <Text style={s.kpiNum}>{(esgScoreTotal ?? 0).toFixed(1)}</Text>
+              <Text style={s.kpiNum}>{esgScoreTotal.toFixed(1)}</Text>
               <Text style={s.kpiLabel}>Score / 100</Text>
             </View>
             <View style={[s.kpiBox, { borderTopWidth: 3, borderTopColor: C.blue }]}>
-              <Text style={s.kpiNum}>{(totalCo2Tonnes ?? 0).toFixed(1)}</Text>
+              <Text style={s.kpiNum}>{totalCo2Tonnes.toFixed(1)}</Text>
               <Text style={s.kpiLabel}>Total tCO₂e</Text>
             </View>
             <View style={[s.kpiBox, { borderTopWidth: 3, borderTopColor: C.violet }]}>
-              <Text style={s.kpiNum}>{(industryPercentile ?? 0).toFixed(0)}</Text>
-              <Text style={s.kpiLabel}>Branche-percentil</Text>
+              <Text style={s.kpiNum}>{industryPercentile.toFixed(0)}</Text>
+              <Text style={s.kpiLabel}>Branche-%il</Text>
             </View>
           </View>
-
           <View style={s.card}>
-            <Text style={s.cardTitle}>Ledelsesresumé</Text>
-            <Text style={s.bodyMd}>{executiveSummary || `${companyName} har gennemført en ESG-dataindberetning for ${year}. Rapporten er udarbejdet i overensstemmelse med VSME Basic Module og dokumenterer virksomhedens miljø-, sociale og ledelsesmæssige præstation.`}</Text>
+            <Text style={s.cardTitle}>Ledelsesresumé (B1)</Text>
+            <Text style={s.bodyMd}>{stripMd(executiveSummary) || `${companyName} har gennemført VSME-bæredygtighedsrapportering for ${year}.`}</Text>
           </View>
-
           <View style={s.card}>
             <Text style={s.cardTitle}>ESG-scorefordeling pr. dimension</Text>
-            <DimBar label="Miljø (E)"   score={esgScoreE} max={40} color={C.emerald} />
-            <DimBar label="Sociale (S)" score={esgScoreS} max={35} color={C.blue}    />
-            <DimBar label="Ledelse (G)" score={esgScoreG} max={25} color={C.violet}  />
+            <DimBar label="Miljø (E) — vægt 40%"     score={esgScoreE} max={40} color={C.emerald} />
+            <DimBar label="Sociale (S) — vægt 35%"   score={esgScoreS} max={35} color={C.blue}    />
+            <DimBar label="Lederskab (G) — vægt 25%" score={esgScoreG} max={25} color={C.violet}  />
+            <View style={{ flexDirection: "row", justifyContent: "space-between", marginTop: 8, paddingTop: 8, borderTopWidth: 1, borderTopColor: C.gray100 }}>
+              <Text style={{ fontSize: 9, fontWeight: 700, color: C.gray700 }}>Samlet ESG-score</Text>
+              <Text style={{ fontSize: 9, fontWeight: 800, color: rColor }}>{esgScoreTotal.toFixed(1)} / 100 · Rating {esgRating}</Text>
+            </View>
           </View>
         </View>
         <PageFooter page="Side 3" companyName={companyName} year={year} />
@@ -499,82 +477,74 @@ export function ReportPdfDocument(props: ReportPdfProps) {
 
       {/* ── PAGE 4: B3 CO₂ ────────────────────────────────────────────────── */}
       <Page size="A4" style={s.page}>
-        <PageHeader companyName={companyName} section="B3 — Klimaaftryk" />
+        <PageHeader companyName={companyName} section="B3 — Energi og Klimaaftryk" />
         <View style={s.pageBody}>
           <SectionHeading
-            badge="B3 · Klimaaftryk og GHG-opgørelse"
-            title={`CO₂-emissioner ${year} — ${totalCo2Tonnes.toFixed(1)} tCO₂e`}
-            sub="GHG Protocol Corporate Standard · Scope 1, 2 og 3"
+            badge="B3 · Energi og drivhusgasemissioner"
+            title={`GHG-opgørelse ${year} — ${totalCo2Tonnes.toFixed(2)} tCO₂e`}
+            sub="GHG Protocol Corporate Standard · Scope 1 (direkte), 2 (energi) og 3 (værdikæde)"
           />
-
-          {/* Scope overview boxes */}
           <View style={[s.kpiGrid, { marginBottom: 16 }]}>
             {[
-              { label: "Scope 1\nDirekte emissioner",  val: scope1Co2Tonnes,  color: C.orange, sub: "Forbr., natur gas, diesel" },
-              { label: "Scope 2\nIndkøbt energi",       val: scope2Co2Tonnes,  color: C.amber,  sub: "El, fjernvarme" },
-              { label: "Scope 3\nVærdikæde",            val: scope3Co2Tonnes,  color: C.violet, sub: "Rejser, indkøb (frivillig)" },
+              { label: "Scope 1", sub: "Direkte emissioner",   val: scope1Co2Tonnes, color: C.orange, pct: totalCo2Tonnes > 0 ? (scope1Co2Tonnes / totalCo2Tonnes * 100).toFixed(0) : "0" },
+              { label: "Scope 2", sub: "Indkøbt energi",        val: scope2Co2Tonnes, color: C.amber,  pct: totalCo2Tonnes > 0 ? (scope2Co2Tonnes / totalCo2Tonnes * 100).toFixed(0) : "0" },
+              { label: "Scope 3", sub: "Værdikæde (frivillig)", val: scope3Co2Tonnes, color: C.violet, pct: totalCo2Tonnes > 0 ? (scope3Co2Tonnes / totalCo2Tonnes * 100).toFixed(0) : "0" },
             ].map((sc, i) => (
               <View key={i} style={[s.kpiBox, { borderTopWidth: 3, borderTopColor: sc.color }]}>
                 <Text style={[s.kpiNum, { fontSize: 18, color: sc.color }]}>{sc.val.toFixed(2)}</Text>
-                <Text style={[s.kpiLabel, { marginBottom: 4 }]}>{sc.label}</Text>
+                <Text style={[s.kpiLabel, { marginBottom: 2 }]}>{sc.label} tCO₂e</Text>
                 <Text style={[s.small, { textAlign: "center" }]}>{sc.sub}</Text>
+                <Text style={{ fontSize: 8, color: sc.color, fontWeight: 700, marginTop: 2 }}>{sc.pct}% af total</Text>
               </View>
             ))}
           </View>
-
-          {/* Bar chart */}
           <View style={s.card}>
             <Text style={s.cardTitle}>Emissioner pr. scope (tCO₂e)</Text>
-            <ScopeBar label="Scope 1 — Direkte"     tonnes={scope1Co2Tonnes} max={maxCo2} color={C.orange} />
-            <ScopeBar label="Scope 2 — Energi"      tonnes={scope2Co2Tonnes} max={maxCo2} color={C.amber}  />
-            <ScopeBar label="Scope 3 — Værdikæde"   tonnes={scope3Co2Tonnes} max={maxCo2} color={C.violet} />
+            <ScopeBar label="Scope 1 — Direkte"   tonnes={scope1Co2Tonnes} max={maxCo2} color={C.orange} />
+            <ScopeBar label="Scope 2 — Energi"    tonnes={scope2Co2Tonnes} max={maxCo2} color={C.amber}  />
+            <ScopeBar label="Scope 3 — Værdikæde" tonnes={scope3Co2Tonnes} max={maxCo2} color={C.violet} />
             <View style={[s.divider, { marginVertical: 10 }]} />
             <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
-              <Text style={[s.body, { fontWeight: 700 }]}>Total</Text>
+              <Text style={[s.body, { fontWeight: 700 }]}>Total GHG-aftryk</Text>
               <Text style={[s.body, { fontWeight: 800, color: C.green }]}>{totalCo2Tonnes.toFixed(2)} tCO₂e</Text>
             </View>
           </View>
-
           <View style={s.card}>
-            <Text style={s.cardTitle}>Analyse og vurdering</Text>
-            <Text style={s.bodyMd}>{co2Narrative || `${companyName}s samlede GHG-aftryk for ${year} udgør ${totalCo2Tonnes.toFixed(1)} tCO₂e.`}</Text>
+            <Text style={s.cardTitle}>Klimaanalyse (B3)</Text>
+            <Text style={s.bodyMd}>{stripMd(co2Narrative) || `${companyName}s samlede GHG-aftryk for ${year} udgør ${totalCo2Tonnes.toFixed(2)} tCO₂e.`}</Text>
           </View>
-
-          <View style={[s.cardHighlight]}>
+          <View style={s.cardHighlight}>
             <Text style={s.sectionBadge}>Emissionsfaktorer og metode</Text>
             <Text style={s.body}>
-              El (DK): 0,136 kg CO₂e/kWh · Kilde: Energistyrelsen 2024 {"\n"}
-              Fjernvarme (DK): 0,066 kg CO₂e/kWh · Kilde: DEA 2024 {"\n"}
-              Naturgas: 2,04 kg CO₂e/m³ · Kilde: DEFRA 2024 {"\n"}
-              Transport (fly, bil, tog): DEFRA 2024 {"\n"}
-              Opgørelsesmetode: GHG Protocol Corporate Standard (WRI/WBCSD)
+              El (DK): 0,136 kg CO₂e/kWh · Energistyrelsen 2024 | Fjernvarme: 0,066 kg CO₂e/kWh · DEA 2024{"\n"}
+              Naturgas: 2,04 kg CO₂e/m³ · DEFRA 2024 | Diesel: 2,68 kg CO₂e/l · DEFRA 2024{"\n"}
+              Transport/fly: DEFRA 2024 | Metode: GHG Protocol Corporate Standard (WRI/WBCSD)
             </Text>
           </View>
         </View>
         <PageFooter page="Side 4" companyName={companyName} year={year} />
       </Page>
 
-      {/* ── PAGE 5: ESG + Social + Governance ────────────────────────────── */}
+      {/* ── PAGE 5: B2 ESG Scorecard ──────────────────────────────────────── */}
       <Page size="A4" style={s.page}>
-        <PageHeader companyName={companyName} section="B2–B11 — ESG Præstation" />
+        <PageHeader companyName={companyName} section="B2 — ESG Scorecard" />
         <View style={s.pageBody}>
           <SectionHeading
-            badge="ESG · Samlet præstationsoversigt"
+            badge="B2 · Samlet ESG-præstation"
             title="Miljø, Sociale & Governance"
+            sub="Scoringsvægte: Miljø 40% · Sociale 35% · Governance 25% | Max 100 point"
           />
-
-          {/* 3 dimension cards side by side */}
           <View style={{ flexDirection: "row", gap: 10, marginBottom: 16 }}>
             {[
-              { key: "E", label: "Miljø", score: esgScoreE, max: 40, color: C.emerald, lightBg: "#d1fae5",
-                desc: "Inkluderer energiforbrug, CO₂-emissioner, affald og vandudtræk. Scorer iht. VSME B3–B7." },
-              { key: "S", label: "Sociale", score: esgScoreS, max: 35, color: C.blue, lightBg: "#e0f2fe",
-                desc: "Medarbejderforhold, arbejdsmiljø, diversitet, uddannelse og løn. VSME B8–B10." },
-              { key: "G", label: "Ledelse", score: esgScoreG, max: 25, color: C.violet, lightBg: "#ede9fe",
+              { key: "E", label: "Miljø",    score: esgScoreE, max: 40, color: C.emerald, bg: "#d1fae5",
+                desc: "Energiforbrug, CO₂-emissioner, vedvarende energi, affald og vand. VSME B3–B7." },
+              { key: "S", label: "Sociale",  score: esgScoreS, max: 35, color: C.blue, bg: "#e0f2fe",
+                desc: "Medarbejderforhold, arbejdsmiljø, uddannelse, diversitet og løn. VSME B8–B10." },
+              { key: "G", label: "Lederskab",score: esgScoreG, max: 25, color: C.violet, bg: "#ede9fe",
                 desc: "ESG-politik, adfærdskodeks, anti-korruption, GDPR og bestyrelsesansvar. VSME B2/B11." },
             ].map(dim => (
               <View key={dim.key} style={{ flex: 1, borderRadius: 10, borderWidth: 1, borderColor: C.gray200, overflow: "hidden" }}>
-                <View style={{ backgroundColor: dim.lightBg, padding: 12, alignItems: "center" }}>
+                <View style={{ backgroundColor: dim.bg, padding: 12, alignItems: "center" }}>
                   <ScoreRingSvg score={dim.score} max={dim.max} color={dim.color} size={72} />
                   <Text style={{ fontSize: 18, fontWeight: 800, color: dim.color, marginTop: 4 }}>
                     {dim.score.toFixed(1)}
@@ -588,10 +558,9 @@ export function ReportPdfDocument(props: ReportPdfProps) {
               </View>
             ))}
           </View>
-
           <View style={s.card}>
             <Text style={s.cardTitle}>ESG-vurdering og analyse</Text>
-            <Text style={s.bodyMd}>{esgNarrative || `${companyName} har opnået en samlet ESG-score på ${esgScoreTotal.toFixed(1)} / 100 (Rating: ${esgRating}). Der er identificeret ${identifiedGaps.length} forbedringsområder.`}</Text>
+            <Text style={s.bodyMd}>{stripMd(esgNarrative) || `${companyName} opnåede ESG-score ${esgScoreTotal.toFixed(1)}/100 (Rating: ${esgRating}).`}</Text>
           </View>
         </View>
         <PageFooter page="Side 5" companyName={companyName} year={year} />
@@ -602,20 +571,16 @@ export function ReportPdfDocument(props: ReportPdfProps) {
         <PageHeader companyName={companyName} section="Identificerede mangler" />
         <View style={s.pageBody}>
           <SectionHeading
-            badge={`${identifiedGaps.length} Mangler identificeret`}
-            title="Identificerede mangler & prioriteter"
-            sub="Baseret på VSME Basic Module krav og best practice"
+            badge={`${identifiedGaps.length} mangler identificeret`}
+            title="Compliance-gaps og forbedringsområder"
+            sub="Baseret på VSME Basic Module krav — prioriteret efter ESG-påvirkning"
           />
-
           <View style={s.card}>
-            <Text style={[s.cardTitle, { marginBottom: 12 }]}>
-              {identifiedGaps.length} identificerede mangler
-            </Text>
+            <Text style={[s.cardTitle, { marginBottom: 12 }]}>{identifiedGaps.length} identificerede mangler</Text>
             {gapList.map((gap, i) => {
-              // Categorize gap for dot color
               const l = gap.toLowerCase()
-              const isE = l.includes("electricity") || l.includes("energy") || l.includes("waste") || l.includes("renewable") || l.includes("emission")
-              const isS = l.includes("health") || l.includes("safety") || l.includes("training") || l.includes("employee") || l.includes("diversity")
+              const isE = l.includes("energy") || l.includes("waste") || l.includes("renewable") || l.includes("emission") || l.includes("co2") || l.includes("energi")
+              const isS = l.includes("health") || l.includes("safety") || l.includes("training") || l.includes("employee") || l.includes("diversity") || l.includes("medarbejder")
               const dotColor = isE ? C.emerald : isS ? C.blue : C.violet
               return (
                 <View key={i} style={[s.gapRow, i === gapList.length - 1 ? { borderBottomWidth: 0 } : {}]}>
@@ -625,77 +590,85 @@ export function ReportPdfDocument(props: ReportPdfProps) {
               )
             })}
             {identifiedGaps.length > 14 && (
-              <Text style={[s.caption, { marginTop: 8 }]}>
-                + {identifiedGaps.length - 14} yderligere mangler — se fuld rapport online
-              </Text>
+              <Text style={[s.caption, { marginTop: 8 }]}>+ {identifiedGaps.length - 14} yderligere mangler — se fuld rapport online</Text>
             )}
+          </View>
+          <View style={{ flexDirection: "row", gap: 16, marginTop: 4 }}>
+            {[{ color: C.emerald, label: "Miljø (E)" }, { color: C.blue, label: "Sociale (S)" }, { color: C.violet, label: "Governance (G)" }].map(({ color, label }) => (
+              <View key={label} style={{ flexDirection: "row", alignItems: "center", gap: 5 }}>
+                <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: color }} />
+                <Text style={s.small}>{label}</Text>
+              </View>
+            ))}
           </View>
         </View>
         <PageFooter page="Side 6" companyName={companyName} year={year} />
       </Page>
 
-      {/* ── PAGE 7+: Recommendations ──────────────────────────────────────── */}
+      {/* ── PAGE 7: Recommendations (high priority) ───────────────────────── */}
       <Page size="A4" style={s.page}>
-        <PageHeader companyName={companyName} section="Anbefalede tiltag" />
+        <PageHeader companyName={companyName} section="Anbefalede tiltag — høj prioritet" />
         <View style={s.pageBody}>
           <SectionHeading
-            badge={`${recommendations.length} Anbefalinger · Potentiel score-gevinst: +${recommendations.reduce((acc, r) => acc + (r.score_improvement_pts || 0), 0)} pt`}
-            title="Anbefalede tiltag og forbedringer"
-            sub="SMART-mål, handlingstrin og estimeret effekt"
+            badge={`${recommendations.length} anbefalinger · +${recommendations.reduce((acc, r) => acc + (r.score_improvement_pts ?? 0), 0).toFixed(0)} pt potentiale`}
+            title="Anbefalede tiltag og SMART-mål"
+            sub="Høj prioritet — implementér i Q1–Q2 for hurtigste ESG-gevinst"
           />
-          {recsHigh.map(rec => <RecCard key={rec.id} rec={rec} />)}
+          {recsHigh.map((rec, i) => <RecCard key={rec.id || String(i)} rec={rec} index={i} />)}
         </View>
         <PageFooter page="Side 7" companyName={companyName} year={year} />
       </Page>
 
+      {/* ── PAGE 8: Recommendations (medium + low priority) ──────────────── */}
       {recsOthers.length > 0 && (
         <Page size="A4" style={s.page}>
-          <PageHeader companyName={companyName} section="Anbefalede tiltag (fortsat)" />
+          <PageHeader companyName={companyName} section="Anbefalede tiltag — middel/lav prioritet" />
           <View style={s.pageBody}>
-            <SectionHeading badge="Yderligere anbefalinger" title="Middel og lav prioritet" />
-            {recsOthers.map(rec => <RecCard key={rec.id} rec={rec} />)}
+            <SectionHeading
+              badge="Middel og lav prioritet"
+              title="Yderligere forbedringstiltag"
+              sub="Implementér i Q2–Q4 som supplement til høj-prioritetstiltagene"
+            />
+            {recsOthers.map((rec, i) => <RecCard key={rec.id || String(i)} rec={rec} index={recsHigh.length + i} />)}
           </View>
           <PageFooter page="Side 8" companyName={companyName} year={year} />
         </Page>
       )}
 
-      {/* ── PAGE: 12-month roadmap ────────────────────────────────────────── */}
+      {/* ── PAGE 9: 12-month roadmap ──────────────────────────────────────── */}
       <Page size="A4" style={s.page}>
         <PageHeader companyName={companyName} section="12-måneders handlingsplan" />
         <View style={s.pageBody}>
           <SectionHeading
             badge="12-måneders handlingsplan"
             title="Prioriterede tiltag pr. kvartal"
-            sub="Start med Q1 quick wins — se forventet score-gevinst pr. kvartal"
+            sub={`Nuværende score: ${esgScoreTotal.toFixed(1)}/100 — Start med Q1 for hurtigste gevinst`}
           />
-
           <View style={s.qGrid}>
             {(["Q1", "Q2", "Q3", "Q4"] as const).map(q => {
               const qColor = qColors[q]
-              const qLabel = qLabels[q]
               const qRecs  = recommendations.filter(r => r.timeline === q)
-              const qPts   = qRecs.reduce((s, r) => s + (r.score_improvement_pts || 0), 0)
+              const qPts   = qRecs.reduce((acc, r) => acc + (r.score_improvement_pts ?? 0), 0)
               return (
                 <View key={q} style={s.qCol}>
                   <View style={[s.qHead, { backgroundColor: qColor }]}>
-                    <Text style={s.qHeadTitle}>{qLabel.split("\n")[0]}</Text>
-                    <Text style={s.qHeadSub}>{qLabel.split("\n")[1]}</Text>
+                    <Text style={s.qHeadTitle}>{qTitles[q]}</Text>
+                    <Text style={s.qHeadSub}>{qSubs[q]}</Text>
                   </View>
                   <View style={s.qBody}>
-                    {qRecs.length === 0 ? (
-                      <Text style={[s.small, { textAlign: "center", paddingVertical: 10 }]}>—</Text>
-                    ) : (
-                      qRecs.map((rec, i) => (
-                        <View key={i} style={s.qItem}>
-                          <View style={[s.qDot, { backgroundColor: qColor }]} />
-                          <Text style={s.qItemText}>{rec.title}</Text>
-                        </View>
-                      ))
-                    )}
+                    {qRecs.length === 0
+                      ? <Text style={[s.small, { textAlign: "center", paddingVertical: 10 }]}>—</Text>
+                      : qRecs.map((rec, i) => (
+                          <View key={i} style={s.qItem}>
+                            <View style={[s.qDot, { backgroundColor: qColor }]} />
+                            <Text style={s.qItemText}>{rec.title}</Text>
+                          </View>
+                        ))
+                    }
                   </View>
                   {qPts > 0 && (
                     <View style={s.qTotal}>
-                      <Text style={[s.qTotalText, { color: qColor }]}>+{qPts} pt</Text>
+                      <Text style={[s.qTotalText, { color: qColor }]}>+{qPts.toFixed(0)} pt</Text>
                     </View>
                   )}
                 </View>
@@ -703,26 +676,23 @@ export function ReportPdfDocument(props: ReportPdfProps) {
             })}
           </View>
 
-          {/* Score accumulation visual */}
           <View style={[s.card, { marginTop: 16 }]}>
-            <Text style={s.cardTitle}>Forventet score-fremgang</Text>
+            <Text style={s.cardTitle}>Forventet score-fremgang over 12 måneder</Text>
             <View style={{ height: 12, flexDirection: "row", borderRadius: 6, overflow: "hidden" }}>
               {(["Q1", "Q2", "Q3", "Q4"] as const).map(q => {
-                const total = recommendations.reduce((s, r) => s + (r.score_improvement_pts || 0), 0)
-                const qPts  = recommendations.filter(r => r.timeline === q).reduce((s, r) => s + (r.score_improvement_pts || 0), 0)
+                const total = recommendations.reduce((acc, r) => acc + (r.score_improvement_pts ?? 0), 0)
+                const qPts  = recommendations.filter(r => r.timeline === q).reduce((acc, r) => acc + (r.score_improvement_pts ?? 0), 0)
                 const pct   = total > 0 ? (qPts / total) * 100 : 25
-                return (
-                  <View key={q} style={{ flex: pct, backgroundColor: qColors[q], minWidth: pct > 0 ? 2 : 0 }} />
-                )
+                return <View key={q} style={{ flex: pct, backgroundColor: qColors[q], minWidth: pct > 0 ? 2 : 0 }} />
               })}
             </View>
             <View style={{ flexDirection: "row", marginTop: 6 }}>
               {(["Q1", "Q2", "Q3", "Q4"] as const).map(q => {
-                const qPts = recommendations.filter(r => r.timeline === q).reduce((s, r) => s + (r.score_improvement_pts || 0), 0)
+                const qPts = recommendations.filter(r => r.timeline === q).reduce((acc, r) => acc + (r.score_improvement_pts ?? 0), 0)
                 return (
                   <View key={q} style={{ flex: 1, alignItems: "center" }}>
-                    <Text style={{ fontSize: 7.5, color: qColors[q], fontWeight: 700 }}>+{qPts} pt</Text>
-                    <Text style={[s.small, { textAlign: "center" }]}>{qLabels[q].split("\n")[1]}</Text>
+                    <Text style={{ fontSize: 8, color: qColors[q], fontWeight: 700 }}>+{qPts.toFixed(0)} pt</Text>
+                    <Text style={[s.small, { textAlign: "center" }]}>{qSubs[q]}</Text>
                   </View>
                 )
               })}
@@ -732,46 +702,45 @@ export function ReportPdfDocument(props: ReportPdfProps) {
         <PageFooter page="Side 9" companyName={companyName} year={year} />
       </Page>
 
-      {/* ── PAGE: Disclaimer ──────────────────────────────────────────────── */}
+      {/* ── PAGE 10: Disclaimer ───────────────────────────────────────────── */}
       <Page size="A4" style={s.page}>
-        <PageHeader companyName={companyName} section="Ansvarsfraskrivelse" />
+        <PageHeader companyName={companyName} section="Metode og ansvarsfraskrivelse" />
         <View style={s.pageBody}>
-          <SectionHeading badge="Metode & Ansvarsfraskrivelse" title="Beregningsgrundlag og begrænsninger" />
-
+          <SectionHeading
+            badge="Metode & Ansvarsfraskrivelse"
+            title="Beregningsgrundlag, emissionsfaktorer og begrænsninger"
+          />
           <View style={s.card}>
             <Text style={s.cardTitle}>Emissionsfaktorer og datakilder</Text>
-            <Text style={[s.bodyMd, { marginBottom: 8 }]}>
-              Rapporten anvender følgende emissionsfaktorer og datakilder:
-            </Text>
             {[
-              ["El (DK)",            "0,136 kg CO₂e/kWh",   "Energistyrelsen 2024"],
-              ["Fjernvarme (DK)",     "0,066 kg CO₂e/kWh",   "DEA 2024"],
-              ["Naturgas",           "2,04 kg CO₂e/m³",     "DEFRA 2024"],
-              ["Diesel",             "2,68 kg CO₂e/l",      "DEFRA 2024"],
-              ["Benzin",             "2,31 kg CO₂e/l",      "DEFRA 2024"],
-              ["Kortdistancefly",    "0,255 kg CO₂e/km/pax","DEFRA 2024"],
-              ["Langdistancefly",    "0,195 kg CO₂e/km/pax","DEFRA 2024"],
+              ["El (DK)",             "0,136 kg CO₂e/kWh",    "Energistyrelsen 2024"],
+              ["Fjernvarme (DK)",     "0,066 kg CO₂e/kWh",    "DEA 2024"],
+              ["Naturgas",            "2,04 kg CO₂e/m³",      "DEFRA 2024"],
+              ["Diesel",              "2,68 kg CO₂e/l",       "DEFRA 2024"],
+              ["Benzin",              "2,31 kg CO₂e/l",       "DEFRA 2024"],
+              ["Kortdistancefly",     "0,255 kg CO₂e/km/pax", "DEFRA 2024"],
+              ["Langdistancefly",     "0,195 kg CO₂e/km/pax", "DEFRA 2024"],
+              ["Firmabiler (diesel)", "0,171 kg CO₂e/km",     "DEFRA 2024"],
             ].map(([cat, val, src], i) => (
               <View key={i} style={[s.scopeRow, { marginBottom: 6 }]}>
-                <Text style={{ width: 120, fontSize: 8, fontWeight: 700, color: C.gray700 }}>{cat}</Text>
+                <Text style={{ width: 130, fontSize: 8, fontWeight: 700, color: C.gray700 }}>{cat}</Text>
                 <Text style={{ flex: 1, fontSize: 8, color: C.gray600 }}>{val}</Text>
                 <Text style={{ width: 120, fontSize: 8, color: C.gray400 }}>{src}</Text>
               </View>
             ))}
           </View>
-
           <View style={s.card}>
             <Text style={s.cardTitle}>Ansvarsfraskrivelse</Text>
             <Text style={s.bodyMd}>{disclaimer}</Text>
           </View>
-
           <View style={[s.cardHighlight, { borderLeftWidth: 3, borderLeftColor: C.green }]}>
-            <Text style={s.sectionBadge}>Standardreferencer</Text>
+            <Text style={s.sectionBadge}>Standardreferencer og metode</Text>
             <Text style={s.body}>
               · VSME Basic Module — EFRAG, 2024{"\n"}
               · GHG Protocol Corporate Standard — WRI/WBCSD, 2015{"\n"}
-              · IPCC AR6 — Global Warming Potentials{"\n"}
-              · EU Taksonomiforordning (EU) 2020/852
+              · IPCC AR6 — Global Warming Potentials (GWP100){"\n"}
+              · EU Taksonomiforordning (EU) 2020/852{"\n"}
+              · CSRD/ESRS — indfasning 2024–2028
             </Text>
           </View>
         </View>

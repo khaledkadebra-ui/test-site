@@ -22,6 +22,14 @@ const config: Config = {
           700: "#334155",
           600: "#475569",
         },
+        // Warm orange accent
+        accent: {
+          50:  "#fff7ed",
+          100: "#ffedd5",
+          400: "#fb923c",
+          500: "#f97316",
+          600: "#ea580c",
+        },
         // ESG dimension colors (SDG-inspired)
         dim: {
           e: "#059669",   // Environment — emerald-600
