@@ -6,7 +6,7 @@ import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
   AreaChart, Area,
 } from "recharts"
-import { TrendingUp, TrendingDown, Minus, ArrowUpRight, Lock } from "lucide-react"
+import { TrendingUp, TrendingDown, Minus, ArrowUpRight } from "lucide-react"
 import Sidebar from "@/components/Sidebar"
 import { getMe, getEsgTrends, getSubscriptionStatus, EsgTrends } from "@/lib/api"
 
@@ -81,13 +81,11 @@ export default function TrendsPage() {
     const token = localStorage.getItem("token")
     if (!token) { router.push("/login"); return }
 
-    Promise.all([getMe(), getSubscriptionStatus()])
-      .then(([me, s]) => {
+    Promise.all([getMe(), getSubscriptionStatus(), getEsgTrends()])
+      .then(([me, s, t]) => {
         setUser(me)
         setSub(s)
-        if (s.has_active_subscription) {
-          return getEsgTrends().then(t => setTrends(t))
-        }
+        setTrends(t)
       })
       .catch((e) => setError(e?.response?.data?.detail || "Kunne ikke hente historik"))
       .finally(() => setLoading(false))
@@ -128,57 +126,7 @@ export default function TrendsPage() {
             <div className="bg-red-50 border border-red-200 rounded-xl p-4 text-red-700 text-sm">{error}</div>
           )}
 
-          {/* Upgrade wall for non-subscribers */}
-          {!loading && !error && sub && !sub.has_active_subscription && (
-            <div className="relative">
-              {/* Blurred preview */}
-              <div className="pointer-events-none select-none blur-sm opacity-40">
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-                  {["ESG Total", "Miljø (E)", "Social (S)", "Ledelse (G)"].map(label => (
-                    <div key={label} className="bg-white rounded-xl border border-gray-200 p-5">
-                      <div className="text-xs font-semibold text-gray-500 uppercase mb-2">{label}</div>
-                      <div className="text-3xl font-bold text-gray-900">72.4</div>
-                      <div className="mt-2 text-emerald-600 text-sm font-semibold">+3.1 point</div>
-                    </div>
-                  ))}
-                </div>
-                <div className="bg-white rounded-xl border border-gray-200 p-6 mb-6 h-72" />
-                <div className="bg-white rounded-xl border border-gray-200 p-6 h-56" />
-              </div>
-
-              {/* Overlay */}
-              <div className="absolute inset-0 flex items-center justify-center">
-                <div className="bg-white rounded-2xl shadow-2xl border border-gray-200 p-10 text-center max-w-md mx-4">
-                  <div className="w-14 h-14 bg-emerald-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                    <Lock className="w-7 h-7 text-emerald-600" />
-                  </div>
-                  <h2 className="text-xl font-bold text-gray-900 mb-2">ESG Historik kræver abonnement</h2>
-                  <p className="text-gray-500 text-sm mb-2 leading-relaxed">
-                    Få adgang til fuld månedsoversigt, trend-grafer og AI-indsigter om jeres bæredygtighedsudvikling.
-                  </p>
-                  <p className="text-gray-400 text-xs mb-6">
-                    Enkeltrapport inkluderer kun nuværende data — ingen historik.
-                  </p>
-                  <div className="space-y-2">
-                    <button
-                      onClick={() => router.push("/billing")}
-                      className="w-full bg-emerald-600 text-white font-semibold py-3 rounded-xl hover:bg-emerald-700 transition-colors text-sm"
-                    >
-                      Se abonnementsplaner <ArrowUpRight className="inline w-4 h-4 ml-1" />
-                    </button>
-                    <button
-                      onClick={() => router.push("/pricing")}
-                      className="w-full border border-gray-200 text-gray-600 font-medium py-2.5 rounded-xl hover:bg-gray-50 transition-colors text-sm"
-                    >
-                      Sammenlign planer
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {!loading && !error && sub?.has_active_subscription && !trends?.has_data && (
+          {!loading && !error && !trends?.has_data && (
             <div className="bg-white rounded-xl border border-gray-200 p-12 text-center">
               <TrendingUp className="w-10 h-10 text-gray-300 mx-auto mb-3" />
               <h2 className="text-gray-700 font-semibold text-base mb-1">Ingen historik endnu</h2>
@@ -194,7 +142,7 @@ export default function TrendsPage() {
             </div>
           )}
 
-          {!loading && sub?.has_active_subscription && trends?.has_data && (
+          {!loading && trends?.has_data && (
             <>
               {/* Score cards */}
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
