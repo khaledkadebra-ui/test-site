@@ -109,6 +109,7 @@ function SubmitPageInner() {
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState("")
   const [uploadModal, setUploadModal] = useState<{ type: "electricity_bill" | "gas_invoice" | "water_bill" | "fuel_receipt" | "waste_invoice" | "general" } | null>(null)
+  const [extractedBanner, setExtractedBanner] = useState("")
   const [preview, setPreview] = useState<Record<string, unknown> | null>(null)
   const [completeness, setCompleteness] = useState<{ is_complete: boolean; completion_pct: number; blocking_issues: string[] } | null>(null)
   const [generating, setGenerating] = useState(false)
@@ -186,7 +187,7 @@ function SubmitPageInner() {
     ? "Procentsats kan ikke overstige 100%"
     : undefined
 
-  useEffect(() => { if (step === 7) loadReview() }, [step])
+  useEffect(() => { if (step === 7) loadReview(); setExtractedBanner("") }, [step])
 
   async function loadReview() {
     const [comp, prev] = await Promise.all([
@@ -301,6 +302,28 @@ function SubmitPageInner() {
               <>
                 <StepHeader icon={Flame} color="bg-orange-100 text-orange-600" title="Scope 1 — Direkte emissioner" subtitle="Forbrænding af brændstoffer på jeres lokation og i firmakøretøjer" vsme="B3" />
                 <div className="space-y-4">
+                  {/* AI upload shortcuts */}
+                  <div className="grid grid-cols-2 gap-3">
+                    <button type="button" onClick={() => setUploadModal({ type: "gas_invoice" })}
+                      className="flex items-center gap-2 px-3 py-2.5 rounded-xl border-2 border-dashed border-orange-200 bg-orange-50/50 hover:bg-orange-50 hover:border-orange-300 transition-colors text-left">
+                      <Paperclip className="w-4 h-4 text-orange-500 flex-shrink-0" />
+                      <div>
+                        <p className="text-xs font-semibold text-orange-700">Upload gasregning</p>
+                        <p className="text-[10px] text-orange-500">AI henter m³ automatisk</p>
+                      </div>
+                    </button>
+                    <button type="button" onClick={() => setUploadModal({ type: "fuel_receipt" })}
+                      className="flex items-center gap-2 px-3 py-2.5 rounded-xl border-2 border-dashed border-orange-200 bg-orange-50/50 hover:bg-orange-50 hover:border-orange-300 transition-colors text-left">
+                      <Paperclip className="w-4 h-4 text-orange-500 flex-shrink-0" />
+                      <div>
+                        <p className="text-xs font-semibold text-orange-700">Upload tankbon / brændstof</p>
+                        <p className="text-[10px] text-orange-500">AI henter liter automatisk</p>
+                      </div>
+                    </button>
+                  </div>
+                  {extractedBanner && step === 0 && (
+                    <div className="bg-green-50 border border-green-200 rounded-lg px-3 py-2 text-xs text-green-700 font-medium">{extractedBanner}</div>
+                  )}
                   <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Stationær forbrænding</h3>
                   <div className="grid grid-cols-2 gap-4">
                     <Field label="Naturgas" unit="m³" value={scope1.natural_gas_m3} onChange={v => setScope1(s => ({ ...s, natural_gas_m3: v }))} />
@@ -335,6 +358,9 @@ function SubmitPageInner() {
                       <p className="text-xs text-green-500">Træk PDF eller billede hertil · Claude læser kWh og periode</p>
                     </div>
                   </button>
+                  {extractedBanner && step === 1 && (
+                    <div className="bg-green-50 border border-green-200 rounded-lg px-3 py-2 text-xs text-green-700 font-medium">{extractedBanner}</div>
+                  )}
                   <div className="grid grid-cols-2 gap-4">
                     <Field label="Elforbrug" unit="kWh" value={scope2.electricity_kwh} onChange={v => setScope2(s => ({ ...s, electricity_kwh: v }))} hint="Aflæst fra elregning — årstal" warning={warnElectricity} />
                     <Field label="Fjernvarme" unit="kWh" value={scope2.district_heating_kwh} onChange={v => setScope2(s => ({ ...s, district_heating_kwh: v }))} />
@@ -451,6 +477,28 @@ function SubmitPageInner() {
                         onChange={e => setEnvironment(en => ({ ...en, pollution_notes: e.target.value }))}
                       />
                     </div>
+                  )}
+                  {/* AI upload shortcuts */}
+                  <div className="grid grid-cols-2 gap-3 mt-2">
+                    <button type="button" onClick={() => setUploadModal({ type: "water_bill" })}
+                      className="flex items-center gap-2 px-3 py-2.5 rounded-xl border-2 border-dashed border-blue-200 bg-blue-50/50 hover:bg-blue-50 hover:border-blue-300 transition-colors text-left">
+                      <Paperclip className="w-4 h-4 text-blue-500 flex-shrink-0" />
+                      <div>
+                        <p className="text-xs font-semibold text-blue-700">Upload vandregning</p>
+                        <p className="text-[10px] text-blue-500">AI henter m³ automatisk</p>
+                      </div>
+                    </button>
+                    <button type="button" onClick={() => setUploadModal({ type: "waste_invoice" })}
+                      className="flex items-center gap-2 px-3 py-2.5 rounded-xl border-2 border-dashed border-blue-200 bg-blue-50/50 hover:bg-blue-50 hover:border-blue-300 transition-colors text-left">
+                      <Paperclip className="w-4 h-4 text-blue-500 flex-shrink-0" />
+                      <div>
+                        <p className="text-xs font-semibold text-blue-700">Upload affaldsopgørelse</p>
+                        <p className="text-[10px] text-blue-500">AI henter ton og % automatisk</p>
+                      </div>
+                    </button>
+                  </div>
+                  {extractedBanner && step === 5 && (
+                    <div className="bg-green-50 border border-green-200 rounded-lg px-3 py-2 text-xs text-green-700 font-medium">{extractedBanner}</div>
                   )}
                   <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mt-4">B5 — Biodiversitet</h3>
                   <div className="grid grid-cols-2 gap-4">
@@ -607,9 +655,25 @@ function SubmitPageInner() {
           documentType={uploadModal.type}
           submissionId={submissionId}
           onExtracted={(fields) => {
+            let filled = 0
             if (uploadModal.type === "electricity_bill") {
-              if (fields.electricity_kwh != null) setScope2(s => ({ ...s, electricity_kwh: String(fields.electricity_kwh) }))
-              if (fields.district_heating_kwh != null) setScope2(s => ({ ...s, district_heating_kwh: String(fields.district_heating_kwh) }))
+              if (fields.electricity_kwh != null) { setScope2(s => ({ ...s, electricity_kwh: String(fields.electricity_kwh) })); filled++ }
+              if (fields.district_heating_kwh != null) { setScope2(s => ({ ...s, district_heating_kwh: String(fields.district_heating_kwh) })); filled++ }
+            } else if (uploadModal.type === "gas_invoice") {
+              if (fields.natural_gas_m3 != null) { setScope1(s => ({ ...s, natural_gas_m3: String(fields.natural_gas_m3) })); filled++ }
+            } else if (uploadModal.type === "fuel_receipt") {
+              if (fields.diesel_liters != null) { setScope1(s => ({ ...s, diesel_liters: String(fields.diesel_liters) })); filled++ }
+              if (fields.petrol_liters != null) { setScope1(s => ({ ...s, petrol_liters: String(fields.petrol_liters) })); filled++ }
+              if (fields.lpg_liters != null) { setScope1(s => ({ ...s, lpg_liters: String(fields.lpg_liters) })); filled++ }
+            } else if (uploadModal.type === "water_bill") {
+              if (fields.water_withdrawal_m3 != null) { setEnvironment(e => ({ ...e, water_withdrawal_m3: String(fields.water_withdrawal_m3) })); filled++ }
+            } else if (uploadModal.type === "waste_invoice") {
+              if (fields.total_waste_tonnes != null) { setEnvironment(e => ({ ...e, waste_total_tonnes: String(fields.total_waste_tonnes) })); filled++ }
+              if (fields.hazardous_waste_tonnes != null) { setEnvironment(e => ({ ...e, waste_hazardous_tonnes: String(fields.hazardous_waste_tonnes) })); filled++ }
+              if (fields.waste_recycled_pct != null) { setEnvironment(e => ({ ...e, waste_recycled_pct: String(fields.waste_recycled_pct) })); filled++ }
+            }
+            if (filled > 0) {
+              setExtractedBanner(`✓ ${filled} felt${filled > 1 ? "er" : ""} udfyldt fra dokument — kontrollér og klik Gem & Fortsæt`)
             }
           }}
           onClose={() => setUploadModal(null)}
