@@ -1,12 +1,13 @@
 """
 Billing routes — ESG Copilot
-POST /billing/checkout          — Create Stripe Checkout session (subscription)
-POST /billing/checkout-onetime  — Create Stripe Checkout session (one-time report)
-POST /billing/portal            — Create Stripe Customer Portal session
-POST /billing/webhook           — Stripe webhook receiver
-GET  /billing/status            — Current subscription + credits status
-GET  /billing/history           — ESG snapshot history for company
-GET  /billing/trends            — ESG trend summary for company
+POST /billing/checkout              — Create Stripe Checkout session (subscription)
+POST /billing/checkout-onetime      — Create Stripe Checkout session (one-time report)
+POST /billing/portal                — Create Stripe Customer Portal session
+POST /billing/webhook               — Stripe webhook receiver
+GET  /billing/status                — Current subscription + credits status
+GET  /billing/history               — ESG snapshot history for company
+GET  /billing/trends                — ESG trend summary for company
+POST /billing/monthly-reports       — Cron: trigger monthly reports for all active subscribers
 """
 
 import logging
@@ -294,6 +295,104 @@ async def _cancel_subscription(db, customer_id: str):
         user.subscription_status = "cancelled"
         user.subscription_plan = "free"
         await db.commit()
+
+
+@router.post("/monthly-reports", status_code=200)
+async def trigger_monthly_reports(request: Request, db: DB):
+    """
+    Cron endpoint — called by Railway/external scheduler on the 1st of each month.
+    Finds all active subscribers with a latest submitted submission and queues reports.
+    Protected by CRON_SECRET header.
+    """
+    cron_secret = request.headers.get("X-Cron-Secret", "")
+    if not settings.STRIPE_WEBHOOK_SECRET or cron_secret != settings.STRIPE_WEBHOOK_SECRET:
+        # Reuse webhook secret as cron auth (set same secret in Railway cron env)
+        # Allow if no secret configured (dev mode)
+        if settings.STRIPE_WEBHOOK_SECRET:
+            raise HTTPException(status_code=401, detail="Unauthorized")
+
+    from app.models.user import User
+    from app.models.submission import DataSubmission
+    from app.models.report import Report
+    from sqlalchemy import select
+    from datetime import datetime, timezone
+
+    now = datetime.now(tz=timezone.utc)
+    triggered = 0
+    skipped = 0
+
+    # Find all active subscribers with a company
+    result = await db.execute(
+        select(User).where(
+            User.subscription_status.in_(["active", "trialing"]),
+            User.company_id.isnot(None),
+        )
+    )
+    subscribers = result.scalars().all()
+
+    for user in subscribers:
+        try:
+            # Find their latest submitted submission
+            sub_result = await db.execute(
+                select(DataSubmission)
+                .where(
+                    DataSubmission.company_id == user.company_id,
+                    DataSubmission.status == "submitted",
+                )
+                .order_by(DataSubmission.updated_at.desc())
+                .limit(1)
+            )
+            submission = sub_result.scalar_one_or_none()
+            if not submission:
+                skipped += 1
+                continue
+
+            # Skip if a report was already generated this month for this submission
+            existing = await db.execute(
+                select(Report).where(
+                    Report.submission_id == submission.id,
+                    Report.status.in_(["completed", "processing", "draft"]),
+                )
+            )
+            if existing.scalar_one_or_none():
+                skipped += 1
+                continue
+
+            # Create report + queue pipeline
+            from uuid import uuid4
+            from app.models.audit_log import AuditLog
+
+            report = Report(
+                id=uuid4(),
+                company_id=user.company_id,
+                submission_id=submission.id,
+                status="processing",
+                created_by=user.id,
+            )
+            db.add(report)
+            db.add(AuditLog(
+                user_id=user.id,
+                company_id=user.company_id,
+                action="report.monthly_auto",
+                entity_type="report",
+                entity_id=report.id,
+                new_value={"triggered_by": "monthly_cron", "month": now.month, "year": now.year},
+            ))
+            await db.flush()
+
+            # Fire background pipeline (import here to avoid circular deps)
+            from app.api.v1.routes.reports import _run_report_pipeline
+            import asyncio
+            asyncio.create_task(_run_report_pipeline(str(report.id), str(submission.id)))
+
+            triggered += 1
+        except Exception as exc:
+            logger.warning("Monthly report failed for user %s: %s", user.id, exc)
+            continue
+
+    await db.commit()
+    logger.info("Monthly reports: triggered=%d skipped=%d", triggered, skipped)
+    return {"triggered": triggered, "skipped": skipped, "month": now.month, "year": now.year}
 
 
 async def _mark_past_due(db, customer_id: str):

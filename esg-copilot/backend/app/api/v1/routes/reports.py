@@ -69,6 +69,17 @@ async def generate_report(
                    f"Call POST /submissions/{{id}}/submit first.",
         )
 
+    # ── Access gate: must have active subscription OR one-time credit ─────────
+    if current_user.role != "super_admin":
+        has_sub = current_user.subscription_status in ("active", "trialing")
+        has_credits = (current_user.one_time_report_credits or 0) > 0
+        if not has_sub and not has_credits:
+            raise HTTPException(
+                status_code=402,
+                detail="Rapport-generering kræver et aktivt abonnement eller en enkeltrapport-kredit. "
+                       "Gå til Fakturering for at opgradere.",
+            )
+
     # Check if active report already exists
     existing = await db.execute(
         select(Report).where(
@@ -98,6 +109,11 @@ async def generate_report(
         entity_id=report.id,
         new_value={"submission_id": str(sub.id), "year": sub.reporting_year},
     ))
+
+    # Deduct one-time credit if not on an active subscription
+    if current_user.role != "super_admin":
+        if current_user.subscription_status not in ("active", "trialing"):
+            current_user.one_time_report_credits = max(0, (current_user.one_time_report_credits or 0) - 1)
 
     # Queue the actual generation (Week 5: replace with Celery task)
     background_tasks.add_task(_run_report_pipeline, str(report.id), str(sub.id))

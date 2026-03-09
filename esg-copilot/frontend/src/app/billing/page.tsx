@@ -5,13 +5,14 @@ import Link from "next/link"
 import Sidebar from "@/components/Sidebar"
 import { getMe } from "@/lib/api"
 import api from "@/lib/api"
-import { CreditCard, CheckCircle, AlertCircle, ExternalLink, ArrowRight, Zap } from "lucide-react"
+import { CreditCard, CheckCircle, ExternalLink, Zap, FileText, Lock, BarChart2 } from "lucide-react"
 
 interface SubStatus {
   plan: string
   status: string
   has_active_subscription: boolean
   expires_at: string | null
+  one_time_report_credits: number
 }
 
 const PLAN_LABELS: Record<string, string> = {
@@ -91,6 +92,20 @@ export default function BillingPage() {
     }
   }
 
+  async function checkoutOnetime() {
+    setCheckoutLoading("onetime")
+    setBillingError("")
+    try {
+      const { data } = await api.post("/billing/checkout-onetime")
+      window.location.href = data.checkout_url
+    } catch (err: unknown) {
+      const e = err as { response?: { data?: { detail?: string } } }
+      setBillingError(e?.response?.data?.detail || "Betalingsservice utilgængelig. Kontakt venligst support.")
+    } finally {
+      setCheckoutLoading(null)
+    }
+  }
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
@@ -150,6 +165,93 @@ export default function BillingPage() {
               </button>
             )}
           </div>
+
+          {/* One-time credits + purchase */}
+          <div className="card">
+            <div className="flex items-start justify-between mb-4">
+              <div>
+                <h2 className="section-title mb-1">Enkeltrapport</h2>
+                <p className="text-sm text-gray-500">Køb en enkelt rapport uden abonnement.</p>
+              </div>
+              <FileText className="w-6 h-6 text-gray-300" />
+            </div>
+
+            {(sub?.one_time_report_credits ?? 0) > 0 && (
+              <div className="flex items-center gap-3 bg-blue-50 border border-blue-100 rounded-xl px-4 py-3 mb-4">
+                <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
+                  <span className="text-blue-700 font-black text-sm">{sub?.one_time_report_credits}</span>
+                </div>
+                <div>
+                  <div className="text-sm font-semibold text-blue-900">
+                    {sub?.one_time_report_credits} ubrugt {sub?.one_time_report_credits === 1 ? "kredit" : "kreditter"}
+                  </div>
+                  <div className="text-xs text-blue-600">Brug dem under Indsend Data → Generer rapport</div>
+                </div>
+              </div>
+            )}
+
+            <div className="bg-gray-50 rounded-xl p-4 mb-4 space-y-2">
+              <div className="text-2xl font-black text-gray-900">€29 <span className="text-sm font-normal text-gray-500">/ rapport</span></div>
+              <ul className="text-sm text-gray-600 space-y-1.5">
+                {["CO₂-beregning (Scope 1/2/3)", "ESG-score & A–E-vurdering", "AI-skrevne tekster", "PDF-rapport download"].map(f => (
+                  <li key={f} className="flex items-center gap-2">
+                    <CheckCircle className="w-3.5 h-3.5 text-emerald-500 flex-shrink-0" />
+                    {f}
+                  </li>
+                ))}
+                {["Historisk ESG-oversigt", "Månedlige trend-sammenligninger"].map(f => (
+                  <li key={f} className="flex items-center gap-2 text-gray-400">
+                    <Lock className="w-3.5 h-3.5 flex-shrink-0" />
+                    {f}
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            {!sub?.has_active_subscription && (
+              <button
+                onClick={checkoutOnetime}
+                disabled={checkoutLoading === "onetime"}
+                className="btn-secondary w-full py-2.5 text-sm"
+              >
+                {checkoutLoading === "onetime" ? "Omdirigerer…" : "Køb enkeltrapport (€29) →"}
+              </button>
+            )}
+            {sub?.has_active_subscription && (
+              <p className="text-xs text-gray-400 text-center pt-1">
+                Dit abonnement inkluderer allerede rapporter. Engangskøb er ikke nødvendigt.
+              </p>
+            )}
+          </div>
+
+          {/* Subscription benefits highlight for non-subscribers */}
+          {!sub?.has_active_subscription && (
+            <div className="card border-emerald-200 bg-emerald-50/40">
+              <div className="flex items-center gap-3 mb-3">
+                <div className="w-9 h-9 bg-emerald-100 rounded-xl flex items-center justify-center">
+                  <BarChart2 className="w-5 h-5 text-emerald-600" />
+                </div>
+                <div>
+                  <h2 className="section-title mb-0">Abonnement inkluderer ESG Historik</h2>
+                  <p className="text-xs text-emerald-700 font-medium">Ikke tilgængeligt med enkeltrapport</p>
+                </div>
+              </div>
+              <ul className="text-sm text-gray-600 space-y-1.5 mb-4">
+                {[
+                  "Fuld månedsoversigt over alle ESG-scores",
+                  "Trend-sammenligninger: op/ned pr. dimension",
+                  "CO₂ og ESG udviklingsgrafer",
+                  "AI-indsigter om positiv/negativ retning",
+                  "Automatisk månedlig rapport",
+                ].map(f => (
+                  <li key={f} className="flex items-center gap-2">
+                    <CheckCircle className="w-3.5 h-3.5 text-emerald-500 flex-shrink-0" />
+                    {f}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
 
           {/* Upgrade options (if not pro) */}
           {sub?.plan !== "professional" && (
