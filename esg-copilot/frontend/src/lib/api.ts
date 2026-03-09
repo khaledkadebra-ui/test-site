@@ -182,6 +182,53 @@ export async function createPortalSession() {
   return data
 }
 
+export async function createOnetimeCheckout() {
+  const { data } = await api.post("/billing/checkout-onetime")
+  return data as { checkout_url: string }
+}
+
+export async function getEsgHistory() {
+  const { data } = await api.get("/billing/history")
+  return data as EsgSnapshot[]
+}
+
+export async function getEsgTrends() {
+  const { data } = await api.get("/billing/trends")
+  return data as EsgTrends
+}
+
+export interface EsgSnapshot {
+  id: string
+  company_id: string
+  report_id: string | null
+  snapshot_month: number
+  snapshot_year: number
+  reporting_year: number | null
+  label: string
+  esg_score_total: number | null
+  esg_score_e: number | null
+  esg_score_s: number | null
+  esg_score_g: number | null
+  esg_rating: string | null
+  industry_percentile: number | null
+  total_co2e_tonnes: number | null
+  scope1_co2e_tonnes: number | null
+  scope2_co2e_tonnes: number | null
+  scope3_co2e_tonnes: number | null
+  industry_code: string | null
+  employee_count: number | null
+  created_at: string
+}
+
+export interface EsgTrends {
+  has_data: boolean
+  snapshots: EsgSnapshot[]
+  latest?: EsgSnapshot
+  previous?: EsgSnapshot
+  changes?: Record<string, number | null>
+  directions?: Record<string, string>
+}
+
 // ── Materiality Assessment ─────────────────────────────────────────────────────
 
 export async function runMaterialityAssessment(companyId: string) {

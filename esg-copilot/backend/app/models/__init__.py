@@ -7,6 +7,7 @@ from app.models.submission import DataSubmission, EnergyData, TravelData, Procur
 from app.models.report import Report, ReportResults
 from app.models.audit_log import AuditLog
 from app.models.materiality import MaterialityAssessment
+from app.models.esg_snapshot import EsgSnapshot
 
 __all__ = [
     "User", "Company",
@@ -14,4 +15,5 @@ __all__ = [
     "Report", "ReportResults",
     "AuditLog",
     "MaterialityAssessment",
+    "EsgSnapshot",
 ]

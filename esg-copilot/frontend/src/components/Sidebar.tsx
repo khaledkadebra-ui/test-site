@@ -4,7 +4,7 @@ import { usePathname } from "next/navigation"
 import { logout } from "@/lib/api"
 import {
   LayoutDashboard, Wind, Target, FileText, TrendingUp,
-  Upload, Settings, CreditCard, LogOut, Leaf, Zap, Microscope
+  Upload, Settings, CreditCard, LogOut, Leaf, Zap, Microscope, BarChart2
 } from "lucide-react"
 import ChatWidget from "./ChatWidget"
 
@@ -23,6 +23,7 @@ const NAV_GROUPS = [
       { href: "/improvements", label: "Forbedringer",       icon: Target },
       { href: "/reports",      label: "VSME Rapport",       icon: FileText },
       { href: "/goals",        label: "Mål & Målsætninger", icon: TrendingUp },
+      { href: "/trends",       label: "ESG Historik",       icon: BarChart2 },
     ],
   },
   {

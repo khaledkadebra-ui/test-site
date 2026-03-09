@@ -1,9 +1,12 @@
 """
 Billing routes — ESG Copilot
-POST /billing/checkout      — Create Stripe Checkout session
-POST /billing/portal        — Create Stripe Customer Portal session
-POST /billing/webhook       — Stripe webhook receiver
-GET  /billing/status        — Current subscription status
+POST /billing/checkout          — Create Stripe Checkout session (subscription)
+POST /billing/checkout-onetime  — Create Stripe Checkout session (one-time report)
+POST /billing/portal            — Create Stripe Customer Portal session
+POST /billing/webhook           — Stripe webhook receiver
+GET  /billing/status            — Current subscription + credits status
+GET  /billing/history           — ESG snapshot history for company
+GET  /billing/trends            — ESG trend summary for company
 """
 
 import logging
@@ -42,6 +45,7 @@ class SubscriptionStatus(BaseModel):
     status: str
     has_active_subscription: bool
     expires_at: str | None
+    one_time_report_credits: int = 0
 
 
 # ── Helpers ────────────────────────────────────────────────────────────────────
@@ -66,6 +70,7 @@ async def get_subscription_status(current_user: CurrentUser):
         status=current_user.subscription_status,
         has_active_subscription=current_user.has_active_subscription,
         expires_at=current_user.subscription_expires_at.isoformat() if current_user.subscription_expires_at else None,
+        one_time_report_credits=current_user.one_time_report_credits or 0,
     )
 
 
@@ -110,6 +115,57 @@ async def create_checkout_session(body: CheckoutRequest, current_user: CurrentUs
     return CheckoutResponse(checkout_url=session.url)
 
 
+@router.post("/checkout-onetime", response_model=CheckoutResponse)
+async def create_onetime_checkout(current_user: CurrentUser, db: DB):
+    """Create a Stripe Checkout session for a single one-time report purchase."""
+    if not settings.STRIPE_PRICE_ONE_TIME:
+        raise HTTPException(status_code=503, detail="One-time report purchase is not configured.")
+
+    stripe = _get_stripe()
+
+    if current_user.stripe_customer_id:
+        customer_id = current_user.stripe_customer_id
+    else:
+        customer = stripe.Customer.create(
+            email=current_user.email,
+            name=current_user.full_name or current_user.email,
+            metadata={"user_id": str(current_user.id)},
+        )
+        customer_id = customer.id
+        current_user.stripe_customer_id = customer_id
+        await db.commit()
+
+    session = stripe.checkout.Session.create(
+        customer=customer_id,
+        payment_method_types=["card"],
+        line_items=[{"price": settings.STRIPE_PRICE_ONE_TIME, "quantity": 1}],
+        mode="payment",
+        success_url=f"{settings.FRONTEND_URL}/billing/success?session_id={{CHECKOUT_SESSION_ID}}&type=onetime",
+        cancel_url=f"{settings.FRONTEND_URL}/pricing",
+        metadata={"user_id": str(current_user.id), "type": "one_time_report"},
+    )
+
+    return CheckoutResponse(checkout_url=session.url)
+
+
+@router.get("/history")
+async def get_esg_history(current_user: CurrentUser, db: DB):
+    """Return ESG snapshot history (up to 24 months) for the current user's company."""
+    if not current_user.company_id:
+        return []
+    from app.services.snapshot_service import get_history
+    return await get_history(db, str(current_user.company_id))
+
+
+@router.get("/trends")
+async def get_esg_trends(current_user: CurrentUser, db: DB):
+    """Return ESG trend summary (latest scores + deltas) for the current user's company."""
+    if not current_user.company_id:
+        return {"has_data": False, "snapshots": []}
+    from app.services.snapshot_service import get_trends
+    return await get_trends(db, str(current_user.company_id))
+
+
 @router.post("/portal", response_model=PortalResponse)
 async def create_portal_session(current_user: CurrentUser):
     if not current_user.stripe_customer_id:
@@ -147,8 +203,11 @@ async def stripe_webhook(request: Request, db: DB):
 
     if event_type == "checkout.session.completed":
         user_id = data.get("metadata", {}).get("user_id")
-        plan = data.get("metadata", {}).get("plan", "starter")
-        if user_id:
+        purchase_type = data.get("metadata", {}).get("type", "subscription")
+        if purchase_type == "one_time_report" and user_id:
+            await _grant_onetime_credit(db, user_id)
+        elif user_id:
+            plan = data.get("metadata", {}).get("plan", "starter")
             await _activate_subscription(db, user_id, plan, data.get("customer"))
 
     elif event_type in ("customer.subscription.updated", "customer.subscription.created"):
@@ -161,6 +220,16 @@ async def stripe_webhook(request: Request, db: DB):
         await _mark_past_due(db, data.get("customer"))
 
     return {"received": True}
+
+
+async def _grant_onetime_credit(db, user_id: str):
+    from app.models.user import User
+    result = await db.execute(select(User).where(User.id == user_id))
+    user = result.scalar_one_or_none()
+    if user:
+        user.one_time_report_credits = (user.one_time_report_credits or 0) + 1
+        await db.commit()
+        logger.info("Granted 1 one-time report credit to user %s", user_id)
 
 
 async def _activate_subscription(db, user_id: str, plan: str, stripe_customer_id: str):

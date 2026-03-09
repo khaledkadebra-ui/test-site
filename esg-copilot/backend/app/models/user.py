@@ -3,7 +3,7 @@
 import uuid
 from datetime import datetime, timezone
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, String, func
+from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, func
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -33,6 +33,7 @@ class User(Base):
     subscription_plan: Mapped[str] = mapped_column(String(50), nullable=False, default="free")   # free | starter | professional
     subscription_status: Mapped[str] = mapped_column(String(50), nullable=False, default="inactive")  # inactive | active | trialing | past_due | cancelled
     subscription_expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    one_time_report_credits: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
 
     company: Mapped["Company"] = relationship("Company", back_populates="users", foreign_keys=[company_id])  # type: ignore[name-defined]
 

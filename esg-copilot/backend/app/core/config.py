@@ -51,6 +51,7 @@ class Settings(BaseSettings):
     STRIPE_WEBHOOK_SECRET: str = ""
     STRIPE_PRICE_STARTER: str = ""     # monthly price ID for Starter plan
     STRIPE_PRICE_PRO: str = ""         # monthly price ID for Professional plan
+    STRIPE_PRICE_ONE_TIME: str = ""    # one-time price ID for single report purchase
 
     # ── Email (Resend) ────────────────────────────────────────────────────────
     RESEND_API_KEY: str = ""

@@ -524,6 +524,21 @@ async def _run_report_pipeline(report_id: str, submission_id: str):
             await db.commit()
             logger.info("Report completed: report_id=%s", report_id)
 
+            # ── 7. Save ESG snapshot for trend tracking ──────────────────────
+            try:
+                from app.services.snapshot_service import save_snapshot
+                await db.refresh(rr)
+                await save_snapshot(
+                    db,
+                    company_id=str(sub.company_id),
+                    report_id=str(report.id),
+                    results=rr,
+                    company=company,
+                    reporting_year=sub.reporting_year,
+                )
+            except Exception as snap_exc:
+                logger.warning("Snapshot save failed (non-fatal): %s", snap_exc)
+
         except Exception as e:
             logger.exception("Report pipeline failed: report_id=%s", report_id)
             try:
