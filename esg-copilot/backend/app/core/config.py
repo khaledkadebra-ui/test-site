@@ -60,6 +60,10 @@ class Settings(BaseSettings):
     # ── Calculation Engine ────────────────────────────────────────────────────
     CALCULATION_ENGINE_VERSION: str = "1.0.0"
 
+    # ── Billing Gate ─────────────────────────────────────────────────────────
+    # Set REQUIRE_BILLING=false in Railway env vars to allow free report generation (testing)
+    REQUIRE_BILLING: bool = True
+
     class Config:
         env_file = ".env"
         case_sensitive = True

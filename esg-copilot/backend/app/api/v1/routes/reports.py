@@ -15,6 +15,7 @@ from fastapi import APIRouter, HTTPException, BackgroundTasks, status
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
+from app.core.config import settings
 from app.core.deps import CurrentUser, DB
 from app.models.audit_log import AuditLog
 from app.models.report import Report, ReportResults
@@ -70,7 +71,7 @@ async def generate_report(
         )
 
     # ── Access gate: must have active subscription OR one-time credit ─────────
-    if current_user.role != "super_admin":
+    if current_user.role != "super_admin" and settings.REQUIRE_BILLING:
         has_sub = current_user.subscription_status in ("active", "trialing")
         has_credits = (current_user.one_time_report_credits or 0) > 0
         if not has_sub and not has_credits:
@@ -111,7 +112,7 @@ async def generate_report(
     ))
 
     # Deduct one-time credit if not on an active subscription
-    if current_user.role != "super_admin":
+    if current_user.role != "super_admin" and settings.REQUIRE_BILLING:
         if current_user.subscription_status not in ("active", "trialing"):
             current_user.one_time_report_credits = max(0, (current_user.one_time_report_credits or 0) - 1)
 
