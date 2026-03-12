@@ -120,7 +120,7 @@ export default function BillingPage() {
       <div className="ml-60 flex-1 flex flex-col">
         {/* Header */}
         <div className="bg-white border-b border-gray-100 px-8 py-5">
-          <h1 className="text-xl font-bold text-gray-900">Fakturering & Abonnement</h1>
+          <h1 className="text-xl font-bold text-gray-900">Abonnement</h1>
           <p className="text-sm text-gray-500 mt-0.5">Administrer din plan og betalingsoplysninger</p>
         </div>
 
