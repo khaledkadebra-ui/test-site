@@ -37,7 +37,7 @@ const NAV_GROUPS = [
     label: "Konto",
     items: [
       { href: "/settings", label: "Indstillinger", icon: Settings },
-      { href: "/billing",  label: "Fakturering",   icon: CreditCard },
+      { href: "/billing",  label: "Abonnement",    icon: CreditCard },
     ],
   },
 ]
